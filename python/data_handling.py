@@ -74,4 +74,7 @@ def make_data_dict(y, *selection_parameter, random=False):
         data['x_train_validate'] = np.append(data['x_train'], data['x_validate'], axis=0)
         data['y_train_validate'] = data['y'][data['x_train_validate'][:,0],data['x_train_validate'][:,1]]
 
+        data['x_train'] = data['x_train'].astype(float)/400
+        data['y_train'] = data['y_train'].astype(float)/400
+
     return data
