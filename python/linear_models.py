@@ -28,7 +28,7 @@ def beta_ridge(_lambda, X, y):
     beta = invTerm @ X.T @ y
     return beta
 
-def beta_lasso(alpha, X, y):
+def beta_lasso(_lambda, X, y):
     """Returns a beta with parameters fitted for some X and y, and _lambda hyperparameter. Method is LASSO.
 
     Parameters:
@@ -45,7 +45,7 @@ def beta_lasso(alpha, X, y):
     beta:       array
                 Array of parameters
     """
-    lasso = Lasso(alpha=alpha, fit_intercept=False, max_iter=200000)
+    lasso = Lasso(alpha=_lambda, fit_intercept=False, max_iter=200000)
     lasso.fit(X, y)
     return lasso.coef_
 
@@ -118,7 +118,6 @@ class LinearRegression:
                     Deviation from value in confidence interval.
         """
         sigma2_y = metrics.MSE(y, y_pred)
-        #print((sigma2_y * np.linalg.pinv(X)).diagonal())
         sigma_beta = np.sqrt((sigma2_y * np.linalg.inv(X.T @ X)).diagonal())
         confidence_interval = np.array([self.beta - 2*sigma_beta, self.beta + 2*sigma_beta])
         return confidence_interval, 2*sigma_beta

@@ -34,7 +34,7 @@ def bootstrap(model, X_train, X_validate, y_train, y_validate, R=50):
 
     for r in range(R):
         boot_mask = np.random.randint(0, n, n)
-        X_boot = X_train[boot_mask,:]
+        X_boot = X_train[boot_mask]
         y_boot = y_train[boot_mask]
 
         model.scaler.fit(X_boot[:,1:])
