@@ -41,9 +41,9 @@ def sgd(data, mini_batches, epochs, learning_rate_iter, polynomials, momentum=0,
     """
 
     errors_index = pd.MultiIndex.from_product([
-        range(initial_conditions),
-        range(len(learning_rate_iter))],
-        names = ['Initial condition number', 'Learning rate number']
+        range(len(learning_rate_iter)),
+        range(initial_conditions)],
+        names = ['Learning rate number', 'Initial condition number']
         )
     errors = pd.DataFrame(dtype=float, index=errors_index, columns=range(1, epochs + 1))
     errors.sort_index(inplace=True)
@@ -55,28 +55,28 @@ def sgd(data, mini_batches, epochs, learning_rate_iter, polynomials, momentum=0,
     step = 0
     X = tune.poly_design_matrix(polynomials, data['x_train'])
 
-    init_betas = np.random.randn(initial_conditions, X.shape[1])
-    for i, beta in enumerate(init_betas): # TODO: Vectorise this loop away
-        for j, learning_rate in enumerate(learning_rate_iters): # TODO: Vectorise this loop away
-            for epoch in range(1, epochs + 1):
-                print('epoch: ', epoch)
-                v = np.zeros_like(beta)
-                indexes_used = np.zeros(data_size, dtype=bool)
-                for mini_batch in range(1, mini_batches + 1):
-                    k = np.random.choice(np.arange(data_size)[indexes_used == False], size=(int(data_size/mini_batches)))
-                    indexes_used[k] = True
+    beta = np.random.randn(X.shape[1], initial_conditions)
+    for j, learning_rate in enumerate(learning_rate_iters): # TODO: Vectorise this loop away
+        for epoch in range(1, epochs + 1):
+            print('epoch: ', epoch)
+            v = np.zeros_like(beta)
+            indexes_used = np.zeros(data_size, dtype=bool)
+            for mini_batch in range(1, mini_batches + 1):
+                k = np.random.choice(np.arange(data_size)[indexes_used == False], size=(int(data_size/mini_batches)))
+                indexes_used[k] = True
 
-                    y_tilde = X[k] @ beta
+                print(X[k].shape, beta.shape)
+                y_tilde = X[k] @ beta
 
-                    # TODO: Implement classes in linear_models.py in a way where this can come from it
-                    cost_diff = np.dot(X[k].T, 2/(data_size/mini_batches)*(y_tilde - data['y_train'][k])) + 2*_lambda*beta
+                # TODO: Implement classes in linear_models.py in a way where this can come from it
+                cost_diff = np.dot(X[k].T, 2/(data_size/mini_batches)*(y_tilde - data['y_train'][k][:,np.newaxis])) + 2*_lambda*beta
 
-                    v = momentum*v + learning_rate(step)*cost_diff
-                    beta = beta - v
+                v = momentum*v + learning_rate(step)*cost_diff
+                beta = beta - v
 
-                    step += 1
+                step += 1
+            errors.loc[j][epoch] = metrics.MSE(X @ beta, data['y_train'][:,np.newaxis])
 
-                errors.loc[i,j][epoch] = metrics.MSE(X @ beta, data['y_train'])
 
     return errors
 
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     errors = sgd(data, 20, epochs, learning_rate_iters, 6, momentum=0.5, _lambda=0.01, initial_conditions=5)
 
     for j in range(len(learning_rate_iters)):
-        error_for_learning_rate = errors.xs(j, level=1, drop_level=False)
+        error_for_learning_rate = errors.loc[j]
         min_errors = error_for_learning_rate.min(axis=0)
         max_errors = error_for_learning_rate.max(axis=0)
         best_init_condition = error_for_learning_rate[epochs].idxmin()
