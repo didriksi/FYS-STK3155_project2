@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import tune
 import metrics
 import linear_models
+import plotting
 
 def sgd(data, mini_batches, epochs, learning_rate_iter, polynomials, momentum=0, _lambda=0, initial_conditions=1, metric=metrics.MSE):
     """Stochastic gradient descent
@@ -65,7 +66,7 @@ def sgd(data, mini_batches, epochs, learning_rate_iter, polynomials, momentum=0,
                 k = np.random.choice(np.arange(data_size)[indexes_used == False], size=(int(data_size/mini_batches)))
                 indexes_used[k] = True
 
-                print(X[k].shape, beta.shape)
+                # print(X[k].shape, beta.shape)
                 y_tilde = X[k] @ beta
 
                 # TODO: Implement classes in linear_models.py in a way where this can come from it
@@ -90,7 +91,8 @@ if __name__ == '__main__':
 
     # TODO: Make class or some other datastructure for learning rate functions, so that it has a name?
     learning_rate_iters = [lambda t: learning_rate for learning_rate in np.logspace(-4, -1, 4)]
-    errors = sgd(data, 20, epochs, learning_rate_iters, 6, momentum=0.5, _lambda=0.01, initial_conditions=5)
+    errors = sgd(data, 20, epochs, learning_rate_iters, 6, momentum=0.5, _lambda=0.01, initial_conditions=50)
+
 
     for j in range(len(learning_rate_iters)):
         error_for_learning_rate = errors.loc[j]
@@ -98,16 +100,22 @@ if __name__ == '__main__':
         max_errors = error_for_learning_rate.max(axis=0)
         best_init_condition = error_for_learning_rate[epochs].idxmin()
         best_errors = error_for_learning_rate.loc[best_init_condition]
-        # TODO: Make plot with min_errors and max_errors as extremes, and best_errors as center.
-    
+        plotting.plot_MSE_and_CI(best_errors, max_errors, min_errors, color_MSE='C'+str(j+1), color_shading='C'+str(j+1))
+
     model = linear_models.LinearRegression()
     model.fit(X_test, data['y_train'])
-    plt.plot([0, epochs], np.repeat(metrics.MSE(model.predict(X_test), data['y_train']), 2), label="Analytical")
+    plt.plot([1, epochs], np.repeat(metrics.MSE(model.predict(X_test), data['y_train']), 2), label="Analytical")
     plt.xlabel("Epoch")
     plt.ylabel("MSE")
     plt.yscale("log")
-    plt.legend()
-    plt.savefig("../plots/sgd_different_learning_rates")
-    #plt.show()
 
+    modelnumber = np.array([str(i) for i in range(1, len(learning_rate_iters) + 1)])
+    colors = np.array(["C"] * len(learning_rate_iters), dtype=object) + modelnumber
+    names = np.array(["Learning rate "] * len(learning_rate_iters), dtype=object) + modelnumber
+    handler_map = {}
+    for i in range(len(colors)):
+        handler_map[i] = plotting.LegendObject(colors[i])
+    plt.legend(list(range(len(learning_rate_iters))), names, handler_map=handler_map)
 
+    #plt.savefig("../plots/sgd_different_learning_rates")
+    plt.show()

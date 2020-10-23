@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from matplotlib.animation import FuncAnimation
+import matplotlib.patches as mpatches
 plt.style.use('ggplot')
 
 def side_by_side(*plots, axis_labels=['x', 'y', 'z'], title="plot", filename="plot", animation=False, _3d=True, init_azim=240):
@@ -270,3 +271,43 @@ if __name__ == '__main__':
     validation_test('franke')
     validation_test('real')
 
+
+def plot_MSE_and_CI(MSE, lb, ub, color_MSE="C0", color_shading="C0"):
+    """Plots line with confidence interval, figure must be saved or shown after function call.
+
+    Parameters:
+    -----------
+    line:       array/list
+                Plots centre line
+    lb:         array/list
+                Lower bound of confidence interval
+    ub:         array/list
+                Upper bound of confidence interval
+    color_line: str
+                Colour of
+    """
+    plt.fill_between(range(1,MSE.shape[0]+1), ub, lb,
+                     color=color_shading, alpha=.5)
+    plt.plot(MSE, color_MSE)
+
+class LegendObject(object):
+    """Creates legend for plot_MSE_and_CI
+
+    Parameters:
+    -----------
+    facecolor:  str
+                The color of the legend for the corresponding plot
+    """
+
+    def __init__(self, facecolor='red'):
+        self.facecolor = facecolor
+
+    def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+        x0, y0 = handlebox.xdescent, handlebox.ydescent
+        width, height = handlebox.width, handlebox.height
+        patch = mpatches.Rectangle(
+            # create a rectangle that is filled with color
+            [x0, y0], width, height, facecolor=self.facecolor)
+        handlebox.add_artist(patch)
+
+        return patch
