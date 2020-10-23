@@ -8,7 +8,7 @@ plt.style.use('ggplot')
 
 def side_by_side(*plots, axis_labels=['x', 'y', 'z'], title="plot", filename="plot", animation=False, _3d=True, init_azim=240):
     """Plots two plots with the same x side by side. Can also make an animation of them from different angles.
-
+    
     Parameters:
     -----------
     plots:      (title: str, x: array of shape (n, 2) if _3d==True and (n, ) if not, y: arrays of shape (n, ))
@@ -115,7 +115,7 @@ def validation_errors(val_errors, bias_variance=False, animation=True, fig_presc
     Parameters:
     -----------
     val_errors: pandas dataframe
-                As created by tune_and_evaluate.Tune.validate.
+                As created by tune.Tune.validate.
     bias_variance:
                 bool
                 Set to true to plot bias-variance vs complexity vs lambda,
@@ -143,9 +143,6 @@ def validation_errors(val_errors, bias_variance=False, animation=True, fig_presc
             _lambdas = val_errors.loc['Boot MSE', model][polys[0]].index.values
 
             if bias_variance:
-
-                #print(val_errors.loc['Boot MSE', model][polys[0]].index.values)
-                #print(val_errors.loc['Boot MSE', model][polys[0]].values)
 
                 y_min = np.min((val_errors.loc['Boot Bias', model].min().min(), val_errors.loc['Boot Var', model].min().min()))
                 y_max = val_errors.loc['Boot MSE', model].max().max()
