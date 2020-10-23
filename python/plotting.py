@@ -294,10 +294,16 @@ def plot_MSE_and_CI(MSE, lb, ub, color_MSE="C0", color_shading="C0"):
     plt.plot(MSE, color_MSE)
 
 class LegendObject(object):
-    def __init__(self, facecolor='red', edgecolor='white', dashed=False):
+    """Creates legend for plot_MSE_and_CI
+
+    Parameters:
+    -----------
+    facecolor:  str
+                The color of the legend for the corresponding plot
+    """
+
+    def __init__(self, facecolor='red'):
         self.facecolor = facecolor
-        self.edgecolor = edgecolor
-        self.dashed = dashed
 
     def legend_artist(self, legend, orig_handle, fontsize, handlebox):
         x0, y0 = handlebox.xdescent, handlebox.ydescent
