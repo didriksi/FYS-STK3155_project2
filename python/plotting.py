@@ -195,7 +195,7 @@ def validation_test(name):
     Parameters:
     -----------
     name:       str
-                Name of dataset that tune_and_evaluate.Tune().validate(test_as_well=True) has been run on.
+                Name of dataset that tune.Tune().validate(test_as_well=True) has been run on.
     """
 
     val_error_columns = pd.read_csv(f'../dataframe/{name}_validation_errors.csv', nrows = 1)
@@ -226,23 +226,6 @@ def validation_test(name):
     plt.xlabel("Bootstrap MSE")
     plt.ylabel("k-fold MSE")
     plt.savefig(f"../plots/test_validation_error_{name}.png")
-
-if __name__ == '__main__':
-    franke_val_error_columns = pd.read_csv('../dataframe/franke_validation_errors.csv', nrows = 1)
-    franke_val_errors = pd.read_csv('../dataframe/franke_validation_errors.csv', names=franke_val_error_columns.columns, index_col=[0,1,2], skiprows=1)
-    validation_errors(franke_val_errors, fig_prescript="franke", bias_variance=True)
-    validation_errors(franke_val_errors, fig_prescript="franke", bias_variance=False)
-    validation_errors(franke_val_errors, fig_prescript="franke", animation=False)
-
-    real_val_error_columns = pd.read_csv('../dataframe/real_validation_errors.csv', nrows = 1)
-    real_val_errors = pd.read_csv('../dataframe/real_validation_errors.csv', names=real_val_error_columns.columns, index_col=[0,1,2], skiprows=1)
-    validation_errors(real_val_errors, fig_prescript="real", bias_variance=True)
-    validation_errors(real_val_errors, fig_prescript="real", bias_variance=False)
-    validation_errors(real_val_errors, fig_prescript="real", animation=False)
-
-    validation_test('franke')
-    validation_test('real')
-
 
 def plot_MSE_and_CI(MSE, lb, ub, color_MSE="C0", color_shading="C0"):
     """Plots line with confidence interval, figure must be saved or shown after function call.
