@@ -7,23 +7,26 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.patches as mpatches
 plt.style.use('ggplot')
 
-def side_by_side(*plots, axis_labels=['x', 'y', 'z'], title="plot", filename="plot", animation=False, _3d=True, init_azim=240):
+simple_plotter = lambda ax, x, y, label: ax.plot(x, y, label=label)
+#3d_plotter = lambda ax, x, y, label: ax.plot_trisurf(x[:,0], x[:,1], _y, cmap=cm.coolwarm, linewidth=0, antialiased=False, label=label)
+
+def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), title="plot", projection=None, init_azim=240):
     """Plots two plots with the same x side by side. Can also make an animation of them from different angles.
     
     Parameters:
     -----------
-    plots:      (title: str, x: array of shape (n, 2) if _3d==True and (n, ) if not, y: arrays of shape (n, ))
+    plots:      (title: str, x and y: arrays of shape plotter can handle. (n, ) by default)
                 The different data you want plotted, in up to 8 lists. y can also be a list of y's and optional plot labels
-    axis_labels:(x: str, y: str, z: str)
-                Labels for eachaxis
-    title:      str
-                Title for entire plot.
-    filename:   str
-                Name of file. Should not include filetype.
-    animation:  bool
-                Set to true if you want to get a .mp4 of the plots spinning around their own Z-axis. Only works for 3d.
+    plotter:
+                ax, x, y, label -> matplotlib.pyplot plot
+                Function that makes plot. Must be compatible with projection type.
+                Default is lambda ax, x, y, label: ax.plot(x, y, label=label)
+    axis_labels:(str, str, str)
+                Labels for each axis. Default is ['x', 'y', 'z']
+    title:      str or (str, str)
+                Title for entire plot and filename. If list of two strings the second element is filename.
     init_azim:  float
-                Azimuth angle of plot, or initial azimuth angle of animation.
+                Azimuth angle of plot if projection=='3d'.
     """
     if len(plots) == 1:
         fig = plt.figure(figsize=(5,5))
@@ -50,65 +53,34 @@ def side_by_side(*plots, axis_labels=['x', 'y', 'z'], title="plot", filename="pl
         ylim = (np.min(plots[0][2][0][0]), np.max(plots[0][2][0][0]))
     else:
         ylim = (np.min(plots[0][2]), np.max(plots[0][2]))
+    
     axs = []
+    for i, (title, x, y) in enumerate(plots):
+        axs.append(fig.add_subplot(*subplot_shape, i+1, projection=projection))
+        axs[i].set_title(title)
+        if isinstance(y, list):
+            for _y, *label in y:
+                ylim = (min(np.min(_y), ylim[0]), max(np.max(_y), ylim[1]))
+                if len(label) == 1:
+                    plotter(axs[i], x, _y, label[0])
+                else:
+                    plotter(axs[i], x, _y, None)
+        else:
+            ylim = (min(np.min(y), ylim[0]), max(np.max(y), ylim[1]))
+            plotter(axs[i], x, y, None)
 
-    if _3d:
-        for i, (title, x, y) in enumerate(plots):
-            axs.append(fig.add_subplot(*subplot_shape, i+1, projection='3d'))
-            axs[i].set_title(title)
-            if isinstance(y, list):
-                for _y, *label in y:
-                    ylim = (min(np.min(_y), ylim[0]), max(np.max(_y), ylim[1]))
-                    if len(label) == 1:
-                        axs[i].plot_trisurf(x[:,0], x[:,1], _y, cmap=cm.coolwarm, linewidth=0, antialiased=False, label=label[0])
-                    else:
-                        axs[i].plot_trisurf(x[:,0], x[:,1], _y, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-            else:
-                axs[i].plot_trisurf(x[:,0], x[:,1], y, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-                ylim = (min(np.min(y), ylim[0]), max(np.max(y), ylim[1]))
-
-        for ax in axs:
+    for ax in axs:
+        ax.set_xlabel(axis_labels[0])
+        ax.set_ylabel(axis_labels[1])
+        if projection == '3d':
             ax.set_zlim(*ylim)
-            ax.set_xlabel(axis_labels[0])
-            ax.set_ylabel(axis_labels[1])
             ax.set_zlabel(axis_labels[2])
             ax.view_init(elev=15, azim=init_azim)
-            ax.legend()
-
-        if animation:
-            frames = 10
-            def frame(i):
-                print(f"Drawing frame {i+1}/{frames}")
-                axs[0].view_init(elev=15, azim=init_azim+i*36)
-                axs[1].view_init(elev=15, azim=init_azim+i*36)
-                return fig
-
-            animation = FuncAnimation(fig, frame, frames=range(frames), interval=100)
-            animation.save(f"../plots/animations/{filename}.mp4")
         else:
-            plt.savefig(f"../plots/{filename}.png")
-    else:
-        for i, (title, x, y) in enumerate(plots):
-            axs.append(fig.add_subplot(*subplot_shape, i+1))
-            axs[i].set_title(title)
-            if isinstance(y,  list):
-                for _y, *label in y:
-                    ylim = (min(np.min(_y), ylim[0]), max(np.max(_y), ylim[1]))
-                    if len(label) == 1:
-                        axs[i].plot(x, _y, label=label[0])
-                    else:
-                        axs[i].plot(x, _y)
-            else:
-                axs[i].plot(x, y)
-                ylim = (min(np.min(y), ylim[0]), max(np.max(y), ylim[1]))
-
-        for ax in axs:
             ax.set_ylim(*ylim)
-            ax.set_xlabel(axis_labels[0])
-            ax.set_ylabel(axis_labels[1])
-            ax.legend()
-
-        plt.savefig(f"../plots/{filename}.png")
+    
+    plt.legend()
+    plt.savefig(f"../plots/{filename}.png")
 
 def validation_errors(val_errors, bias_variance=False, animation=True, fig_prescript=''):
     """Plots the data from dataframe val_errors, giving an animation with error vs complexity vs lambda.
