@@ -7,80 +7,113 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.patches as mpatches
 plt.style.use('ggplot')
 
-simple_plotter = lambda ax, x, y, label: ax.plot(x, y, label=label)
-#3d_plotter = lambda ax, x, y, label: ax.plot_trisurf(x[:,0], x[:,1], _y, cmap=cm.coolwarm, linewidth=0, antialiased=False, label=label)
+simple_plotter = lambda ax, x, y, *args, **kwargs: ax.plot(x, y, *args, **kwargs)
+trisurface_plotter = lambda ax, x, y, *args, **kwargs: ax.plot_trisurf(x[:,0], x[:,1], _y, *args, cmap=cm.coolwarm, linewidth=0, antialiased=False, **kwargs)
 
-def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), title="plot", projection=None, init_azim=240):
+def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color_MSE="C0", color_shading="C0", **kwargs):
+    """Plots line with confidence interval, figure must be saved or shown after function call.
+
+    Parameters:
+    -----------
+    ax:         matplotlib.pyplot.axes object
+                Axis to plot on
+    x:          array of shape (n, )
+                x positions
+    lower_midddle_upper_y:
+                array of shape (3, n)
+                Lower and upper bound for confidence interval, and the middle line to be emphasized.
+    *args:      Not used, only here for compatibility.
+    color_MSE:  str
+                ?? TODO: Severin, explain, I don't understand this.
+    color_shading:
+                str
+                ?? TODO: Severin, explain, I don't understand this.
+    **kwargs:   Passed onwards to plt.fill_between()
+    """
+    lower = lower_midddle_upper_y[0]
+    middle = lower_midddle_upper_y[1]
+    upper = lower_midddle_upper_y[2]
+    ax.fill_between(x, lower, upper, color=color_shading, alpha=.5, **kwargs)
+    ax.plot(x, middle, color_MSE)
+
+def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), title="plot", projection=None, **kwargs):
     """Plots two plots with the same x side by side. Can also make an animation of them from different angles.
     
     Parameters:
     -----------
     plots:      (title: str, x and y: arrays of shape plotter can handle. (n, ) by default)
-                The different data you want plotted, in up to 8 lists. y can also be a list of y's and optional plot labels
-    plotter:
-                ax, x, y, label -> matplotlib.pyplot plot
+                The different data you want plotted, in up to 8 lists. y can also be a list of y's
+                and args and kwargs that are sent to the plotter function.
+                If an *arg is a function, it overrides the plotter function for this y.
+    plotter:    ax, x, y, *args, **kwargs -> matplotlib.pyplot plot
                 Function that makes plot. Must be compatible with projection type.
-                Default is lambda ax, x, y, label: ax.plot(x, y, label=label)
+                Default is lambda ax, x, y, *args, **kwargs: ax.plot(x, y, *args, **kwargs)
     axis_labels:(str, str, str)
                 Labels for each axis. Default is ['x', 'y', 'z']
     title:      str or (str, str)
                 Title for entire plot and filename. If list of two strings the second element is filename.
-    init_azim:  float
-                Azimuth angle of plot if projection=='3d'.
+    view_angles:(float, float)
+                Elevation and azimuth angles of plot if projection=='3d'.
     """
-    if len(plots) == 1:
-        fig = plt.figure(figsize=(5,5))
-        subplot_shape = (1, 1)
-    elif len(plots) == 2:
-        fig = plt.figure(figsize=(10,5))
-        subplot_shape = (1, 2)
-    elif len(plots) == 3:
-        fig = plt.figure(figsize=(15,5))
-        subplot_shape = (1, 3)
-    elif len(plots) == 4:
-        fig = plt.figure(figsize=(12,10))
-        subplot_shape = (2, 2)
-    elif len(plots) <= 6:
-        fig = plt.figure(figsize=(12,12))
-        subplot_shape = (2, 3)
+
+    if len(plots) <= 3:
+        fig = plt.figure(figsize=(len(plots)*5, 5))
+        subplot_shape = (1, len(plots))
     elif len(plots) <= 8:
-        fig = plt.figure(figsize=(12,15))
-        subplot_shape = (2, 4)
+        fig = plt.figure(figsize=(15, len(plots)*2))
+        subplot_shape = (2, int(len(plots)/2))
 
-    fig.suptitle(title)
+    fig.suptitle(title[0] if isinstance(title, list) else title)
 
-    if isinstance(plots[0][2], list):
-        ylim = (np.min(plots[0][2][0][0]), np.max(plots[0][2][0][0]))
+    y0 = plots[0][2]
+    if isinstance(y0, list):
+        ylim = (np.min(y0[0][0]), np.max(y0[0][0]))
     else:
-        ylim = (np.min(plots[0][2]), np.max(plots[0][2]))
+        ylim = (np.min(y0), np.max(y0))
     
     axs = []
-    for i, (title, x, y) in enumerate(plots):
+    for i, (ax_title, x, y) in enumerate(plots):
         axs.append(fig.add_subplot(*subplot_shape, i+1, projection=projection))
-        axs[i].set_title(title)
-        if isinstance(y, list):
-            for _y, *label in y:
-                ylim = (min(np.min(_y), ylim[0]), max(np.max(_y), ylim[1]))
-                if len(label) == 1:
-                    plotter(axs[i], x, _y, label[0])
+        axs[i].set_title(ax_title)
+        
+        for _y, *args_kwargs in (y if isinstance(y, list) else [y]):
+            this_plotter = plotter
+            plotter_kwargs = {}; plotter_args = []
+            for arg_kwarg in args_kwargs:
+                if callable(arg_kwarg):
+                    this_plotter = arg_kwarg
+                elif isinstance(arg_kwarg, dict):
+                    plotter_kwargs.update(arg_kwarg)
                 else:
-                    plotter(axs[i], x, _y, None)
-        else:
-            ylim = (min(np.min(y), ylim[0]), max(np.max(y), ylim[1]))
-            plotter(axs[i], x, y, None)
+                    plotter_args.append(arg_kwarg)
 
+            this_plotter(axs[i], x, _y, *plotter_args, **plotter_kwargs)
+
+            ylim = (min(np.min(_y), ylim[0]), max(np.max(_y), ylim[1]))
+        
     for ax in axs:
         ax.set_xlabel(axis_labels[0])
         ax.set_ylabel(axis_labels[1])
+        if 'yscale' in kwargs:
+            ax.set_yscale(kwargs['yscale'])
+
+        if 'legend' in kwargs:
+            legend_args = kwargs['legend'][0]
+            legend_kwargs = kwargs['legend'][1]
+
+            ax.legend(*legend_args, **legend_kwargs)
+        else:
+            ax.legend()
+
         if projection == '3d':
+            if 'view_angles' in kwargs:
+                ax.view_init(elev=kwargs['view_angles'][0], azim=kwargs['view_angles'][1])
             ax.set_zlim(*ylim)
             ax.set_zlabel(axis_labels[2])
-            ax.view_init(elev=15, azim=init_azim)
         else:
             ax.set_ylim(*ylim)
     
-    plt.legend()
-    plt.savefig(f"../plots/{filename}.png")
+    plt.savefig(f"../plots/{title[1] if isinstance(title, list) else title}.png")
 
 def validation_errors(val_errors, bias_variance=False, animation=True, fig_prescript=''):
     """Plots the data from dataframe val_errors, giving an animation with error vs complexity vs lambda.

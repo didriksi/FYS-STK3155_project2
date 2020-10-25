@@ -87,34 +87,39 @@ if __name__ == '__main__':
 
     data = real_terrain.get_data(20)
 
-    epochs = 50
+    epochs = 100
     X_test = tune.poly_design_matrix(6, data['x_train'])
-
     learning_rate_iter = [(lambda t: learning_rate, f"flat_{learning_rate}") for learning_rate in np.logspace(-3, -1, 3)]
-    errors = sgd(data, 20, epochs, learning_rate_iter, 6, momentum=0.5, _lambda=0.01, initial_conditions=50)
 
-    for j, (_, learning_rate_name) in enumerate(learning_rate_iter):
-        error_for_learning_rate = errors.loc[learning_rate_name]
-        min_errors = error_for_learning_rate.min(axis=0)
-        max_errors = error_for_learning_rate.max(axis=0)
-        best_init_condition = error_for_learning_rate[epochs].idxmin()
-        best_errors = error_for_learning_rate.loc[best_init_condition]
-        plotting.plot_MSE_and_CI(best_errors, max_errors, min_errors, color_MSE='C'+str(j+1), color_shading='C'+str(j+1))
+    plots = []
+    for mini_batch_size in [10, 20, 40]:
+        errors = sgd(data, mini_batch_size, epochs, learning_rate_iter, 8, momentum=0.5, _lambda=0.01, initial_conditions=50)
 
-    model = linear_models.LinearRegression()
-    model.fit(X_test, data['y_train'])
-    plt.plot([1, epochs], np.repeat(metrics.MSE(model.predict(X_test), data['y_train']), 2), label="Analytical")
-    plt.xlabel("Epoch")
-    plt.ylabel("MSE")
-    plt.yscale("log")
+        y = []
+        for j, (_, learning_rate_name) in enumerate(learning_rate_iter):
+            error_for_learning_rate = errors.loc[learning_rate_name]
+            min_errors = error_for_learning_rate.min(axis=0).to_numpy()
+            max_errors = error_for_learning_rate.max(axis=0).to_numpy()
+            best_index = error_for_learning_rate[epochs].idxmin()
+            best_errors = error_for_learning_rate.loc[best_index].to_numpy()
+            y.append((np.concatenate((min_errors[np.newaxis,:], best_errors[np.newaxis,:], max_errors[np.newaxis,:]), axis=0), {'color_MSE': 'C'+str(j+1), 'color_shading': 'C'+str(j+1)}))
 
-    modelnames = np.array([f"Learning rate {learning_rate_name}" for _, learning_rate_name in learning_rate_iter])
-    modelnumbers = np.array([str(i) for i in range(1, len(learning_rate_iter) + 1)])
-    colors = np.array(["C"] * len(learning_rate_iter), dtype=object) + modelnumbers
-    handler_map = {}
-    for i in range(len(colors)):
-        handler_map[i] = plotting.LegendObject(colors[i])
-    plt.legend(list(range(len(learning_rate_iter))), modelnames, handler_map=handler_map)
+        model = linear_models.LinearRegression()
+        model.fit(X_test, data['y_train'])
+        y.append((np.repeat(metrics.MSE(model.predict(X_test), data['y_train']), epochs), plotting.simple_plotter, {'label': "Analytical"}))
 
-    #plt.savefig("../plots/sgd_different_learning_rates")
-    plt.show()
+        plots.append([f'Mini batch size: {mini_batch_size}', np.arange(1,epochs+1), y])
+
+    learning_rate_enums = np.arange(len(learning_rate_iter))
+    modelnames = [f"Learning rate {learning_rate_name}" for _, learning_rate_name in learning_rate_iter]
+    colors = [f"C{number}" for number in learning_rate_enums + 1]
+    handler_map = {i: plotting.LegendObject(colors[i]) for i in range(len(colors))}
+
+    side_by_side_parameters  = {
+        'plotter': plotting.confidence_interval_plotter,
+        'axis_labels': ('Epoch', 'MSE'),
+        'title': ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval'],
+        'yscale': 'log',
+        'legend': [[learning_rate_enums, modelnames], {'handler_map': handler_map}]
+    }
+    plotting.side_by_side(*plots, **side_by_side_parameters)
