@@ -82,17 +82,13 @@ def sgd(data, mini_batches, epochs, learning_rate_iter, polynomials, momentum=0,
 
     return errors
 
-if __name__ == '__main__':
-    import real_terrain
-
-    data = real_terrain.get_data(20)
+def plot_sgd(data, title, learning_rate_iter, epochs=100, mini_batch_sizes=[10, 20, 40]):
 
     epochs = 100
     X_test = tune.poly_design_matrix(6, data['x_train'])
-    learning_rate_iter = [(lambda t: learning_rate, f"flat_{learning_rate}") for learning_rate in np.logspace(-3, -1, 3)]
 
     plots = []
-    for mini_batch_size in [10, 20, 40]:
+    for mini_batch_size in mini_batch_sizes:
         errors = sgd(data, mini_batch_size, epochs, learning_rate_iter, 8, momentum=0.5, _lambda=0.01, initial_conditions=50)
 
         y = []
@@ -118,8 +114,24 @@ if __name__ == '__main__':
     side_by_side_parameters  = {
         'plotter': plotting.confidence_interval_plotter,
         'axis_labels': ('Epoch', 'MSE'),
-        'title': ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval'],
+        'title': title,
         'yscale': 'log',
         'legend': [[learning_rate_enums, modelnames], {'handler_map': handler_map}]
     }
     plotting.side_by_side(*plots, **side_by_side_parameters)
+
+
+if __name__ == '__main__':
+
+    
+    import real_terrain
+    data = real_terrain.get_data(20)
+
+    learning_rate_iter = [(lambda t: learning_rate, f"flat_{learning_rate}") for learning_rate in np.logspace(-3, -1, 3)]
+
+    title = ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval']
+
+    plot_sgd(data, title, learning_rate_iter)
+
+
+    
