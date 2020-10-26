@@ -63,7 +63,7 @@ def sgd(data, mini_batches, epochs, learning_rate_iter, polynomials, momentum=0,
     for j, [learning_rate_func, learning_rate_name] in enumerate(learning_rate_iter):
         for epoch in range(1, epochs + 1):
             #print(f'\r {j+1}/3 epoch: ', epoch, end="")
-            print("\r", j+1, '/ 3 epoch: 0| ' + "-" * (epoch // 5) + " "*(20 - epoch // 5), "|100", end="")
+            print("\r        ", j+1, '/ 3 |  epoch: 0| ' + "-" * (epoch // 5) + " "*(20 - epoch // 5), f"|{epoch:.0f}", end="")
             v = np.zeros_like(beta)
             indexes_used = np.zeros(data_size, dtype=bool)
             for mini_batch in range(1, mini_batches + 1):
@@ -92,6 +92,7 @@ def plot_sgd(data, title, learning_rate_iter, epochs=100, mini_batch_sizes=[10, 
     plots = []
     for k, mini_batch_size in enumerate(mini_batch_sizes):
         print(f"Mini batch size {mini_batch_size}")
+        print(" Learning rate |  Progress")
         errors = sgd(data, mini_batch_size, epochs, learning_rate_iter, 8, momentum=0.5, _lambda=0.01, initial_conditions=50)
         y = []
         for j, (_, learning_rate_name) in enumerate(learning_rate_iter):
