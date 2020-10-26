@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import time
 
 import tune
 import metrics
@@ -49,7 +50,7 @@ def sgd(data, mini_batches, epochs, learning_rate_iter, polynomials, momentum=0,
         )
     errors = pd.DataFrame(dtype=float, index=errors_index, columns=range(1, epochs + 1))
     errors.sort_index(inplace=True)
-    print(errors)
+
 
     data_size = data['x_train'].shape[0]
     assert data_size%mini_batches == 0, "Data must be divisible with mini_batches"
@@ -59,9 +60,10 @@ def sgd(data, mini_batches, epochs, learning_rate_iter, polynomials, momentum=0,
 
     beta = np.random.randn(X.shape[1], initial_conditions)
     # TODO: Vectorise this loop away. --Seems difficult as long as it's a function that might include other factors than step
-    for learning_rate_func, learning_rate_name in learning_rate_iter:
+    for j, [learning_rate_func, learning_rate_name] in enumerate(learning_rate_iter):
         for epoch in range(1, epochs + 1):
-            print('epoch: ', epoch)
+            #print(f'\r {j+1}/3 epoch: ', epoch, end="")
+            print("\r", j+1, '/ 3 epoch: 0| ' + "-" * (epoch // 5) + " "*(20 - epoch // 5), "|100", end="")
             v = np.zeros_like(beta)
             indexes_used = np.zeros(data_size, dtype=bool)
             for mini_batch in range(1, mini_batches + 1):
@@ -78,7 +80,7 @@ def sgd(data, mini_batches, epochs, learning_rate_iter, polynomials, momentum=0,
 
                 step += 1
             errors.loc[learning_rate_name][epoch] = metrics.MSE(X @ beta, data['y_train'][:,np.newaxis])
-
+        print("")
 
     return errors
 
@@ -88,9 +90,9 @@ def plot_sgd(data, title, learning_rate_iter, epochs=100, mini_batch_sizes=[10, 
     X_test = tune.poly_design_matrix(6, data['x_train'])
 
     plots = []
-    for mini_batch_size in mini_batch_sizes:
+    for k, mini_batch_size in enumerate(mini_batch_sizes):
+        print(f"Mini batch size {mini_batch_size}")
         errors = sgd(data, mini_batch_size, epochs, learning_rate_iter, 8, momentum=0.5, _lambda=0.01, initial_conditions=50)
-
         y = []
         for j, (_, learning_rate_name) in enumerate(learning_rate_iter):
             error_for_learning_rate = errors.loc[learning_rate_name]
@@ -132,6 +134,6 @@ if __name__ == '__main__':
     title = ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval']
 
     plot_sgd(data, title, learning_rate_iter)
-
+    plt.show()
 
     
