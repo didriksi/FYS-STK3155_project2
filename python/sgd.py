@@ -86,7 +86,6 @@ def sgd(data, mini_batches, epochs, learning_rate_iter, polynomials, momentum=0,
 
 def plot_sgd(data, title, learning_rate_iter, epochs=100, mini_batch_sizes=[10, 20, 40]):
 
-    epochs = 100
     X_test = tune.poly_design_matrix(6, data['x_train'])
 
     plots = []
@@ -134,7 +133,7 @@ if __name__ == '__main__':
 
     title = ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval']
 
-    plot_sgd(data, title, learning_rate_iter)
+    plot_sgd(data, title, learning_rate_iter, epochs=20)
     plt.show()
 
     
