@@ -62,6 +62,7 @@ class LinearRegression:
     def __init__(self, name="OLS", scaler=StandardScaler()):
         self.name = name
         self.scaler = scaler
+        self._lambda = 0
 
     def fit(self, X, y):
         """Fit a beta array of parameters to some predictor and dependent variable
@@ -95,6 +96,75 @@ class LinearRegression:
         """
         y_pred = X @ self.beta
         return y_pred
+
+    def compile(self, beta_shape, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.random.randn(*shape)):
+        """Prepares the model for training by gradient descent.
+        
+        Parameters:
+        -----------
+        beta_shape: tuple of ints
+                    Desired shape of beta.
+        learning_rate:
+                    (int -> float) or float
+                    Either function that takes in step number and returns float, or just a float.
+        momentum:   float
+                    Adds momentum to gradient descent. Default is 0.
+        beta_initialiser:
+                    (tuple of ints -> array of shape of tuples)
+                    Function that returns initial beta with shape decided by beta_shape. Default is standard normal.
+        """
+        self.momentum = momentum
+        self.beta = beta_initialiser(beta_shape)
+        self.velocity = np.zeros_like(self.beta)
+        self.step = 0
+        self.set_learning_rate(learning_rate)
+
+    def set_learning_rate(self, learning_rate):
+        """Sets learning rate.
+        
+        Parameters:
+        -----------
+        learning_rate:
+                    (int -> float) or float
+                    Either function that takes in step number and returns float, or just a float.
+        """
+        self.learning_rate = learning_rate if callable(learning_rate) else lambda step: learning_rate
+
+    def cost_diff(self, X, y, y_tilde):
+        """Differentiates MSE for given data.
+        
+        Parameters:
+        -----------
+        X:          2-dimensional array
+                    Design matrix with rows as data points and columns as features.
+        y:          1-dimensional array
+                    Actual dependent variable.
+        y_tilde:    1-dimensional array
+                    Predicted dependent variable.
+
+        Returns:
+        --------
+        gradient:   array
+                    Differentiated MSE.
+
+        """
+        return np.dot(X.T, 2/X.shape[0]*(y_tilde - y[:,np.newaxis])) + 2*self._lambda*self.beta
+
+    def update_parameters(self, X, y, y_tilde):
+        """Performs one step of gradient descent.
+
+        Parameters:
+        -----------
+        X:          2-dimensional array
+                    Design matrix with rows as data points and columns as features.
+        y:          1-dimensional array
+                    Actual dependent variable.
+        y_tilde:    1-dimensional array
+                    Predicted dependent variable.
+        """
+        self.velocity = self.velocity*self.momentum + self.learning_rate(self.step)*self.cost_diff(X, y, y_tilde)
+        self.beta -= self.velocity
+        self.step += 1
 
     def conf_interval_beta(self, y, y_pred, X):
         """Estimates the 99% confidence interval for array of parameters beta.
@@ -159,6 +229,25 @@ class RegularisedLinearRegression(LinearRegression):
                     Dependent variable.
         """
         self.beta = self.beta_func(self._lambda, X, y)
+
+    def cost_diff(self, X, y, y_tilde):
+        """Differentiates MSE for given data.
+        
+        Parameters:
+        -----------
+        X:          2-dimensional array
+                    Design matrix with rows as data points and columns as features.
+        y:          1-dimensional array
+                    Actual dependent variable.
+        y_tilde:    1-dimensional array
+                    Predicted dependent variable.
+
+        Returns:
+        --------
+        gradient:   array
+                    Differentiated MSE.
+        """
+        return super().cost_diff(X, y, y_tilde) + 2*self._lambda*self.beta
 
     def conf_interval_beta(self, y, y_pred, X):
         """Does nothing. Only here to give an error if someone tries to call it, because its super class has one that works.
