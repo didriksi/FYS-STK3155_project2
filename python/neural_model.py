@@ -4,14 +4,18 @@ import matplotlib.pyplot as plt
 def sigmoid(z):
     return 1/(1 + np.exp(-z))
 
+
 def sigmoidPrime(z):
     return sigmoid(z)*(1-sigmoid(z))
+
 
 def cost(actualOutput, optimal_output):
     return np.square(optimal_output - actualOutput)
 
+
 def cost_diff(actualOutput, optimal_output):
     return 2 * (optimal_output - actualOutput)
+
 
 class Layer:
     """Generic layer in neural network.
@@ -24,6 +28,7 @@ class Layer:
     def __init__(self, height):
         self.a = np.zeros(height)
         self.height = height
+
     def set_prevLayer(self, prevLayerHeight):
         """Initialise weights after making the layer before it.
 
@@ -35,6 +40,7 @@ class Layer:
         """
         self.w = np.random.normal(0, 1, (prevLayerHeight, self.height))
 
+
 class Input(Layer):
     """Input layer in neural network.
 
@@ -45,6 +51,7 @@ class Input(Layer):
     """
     def __init__(self, height):
         super().__init__(height)
+
 
 class Dense(Layer):
     """Hidden, dense layer in neural network.
@@ -65,6 +72,7 @@ class Dense(Layer):
         self.d = np.zeros_like(self.a)
         self.b = np.random.normal(0, 1, height)
         self.activation, self.diff_activation = activation, diff_activation
+
     def feed_forward(self, prevLayer):
         """Feed forward values through this layer.
 
@@ -75,6 +83,7 @@ class Dense(Layer):
         """
         self.z = np.dot(prevLayer.a, self.w)+self.b
         self.a = self.activation(self.z)
+
     def back_propagate(self, nextLayer):
         self.d = np.dot(nextLayer.w, nextLayer.d.T).T * self.diff_activation(self.z)
 
@@ -96,6 +105,7 @@ class Output(Dense):
     def __init__(self, height, activation=sigmoid, diff_activation=sigmoidPrime, cost_diff=cost_diff):
         super().__init__(height, activation, diff_activation)
         self.cost_diff = cost_diff
+
     def back_propagate(self, optimal):
         """back_propagate error through this layer.
 
@@ -105,6 +115,7 @@ class Output(Dense):
                     Optimal output.
         """
         self.d = self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
+
 
 class Network:
     """Network class that stores layers, and organises interactions between them
@@ -118,7 +129,8 @@ class Network:
     def __init__(self, learning_rate=0.006):
         self.learning_rate = learning_rate
         self.network = []
-    def addLayer(self,layer):
+
+    def addLayer(self, layer):
         """Add a layer to network.
         
         Parameters:
@@ -127,12 +139,14 @@ class Network:
                     Layer to add to the end of this network.
         """
         self.network.append(layer)
-    def finalise(self):
+
+    def compile(self):
         """Finalises the network by initialising weights, and making the list of layers an array.
         """
         for i in range(1, len(self.network)):
             self.network[i].set_prevLayer(self.network[i-1].height)
         self.network = np.asarray(self.network)
+
     def feed_forward(self, input_neurons):
         """Feeds forward through the network with a given input.
         
@@ -145,6 +159,7 @@ class Network:
         self.network[0].a = input_neurons
         for i in range(1,len(self.network)):
             self.network[i].feed_forward(self.network[i-1])
+
     def back_propagate(self, optimal_output):
         """Propagates the error back through the network, and steps in a direction of less loss.
         
@@ -164,6 +179,7 @@ class Network:
 
             self.network[i].b += np.mean(self.network[i].d, axis=0) * self.learning_rate
             self.network[i].w += np.dot(self.network[i-1].a.T, self.network[i].d) * self.learning_rate
+
     def __str__(self):
         """Returns a printable string with all the networks biases and weights.
         """
