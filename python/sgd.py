@@ -43,7 +43,7 @@ def sgd(model_x, y, learning_rates, model=linear_models.LinearRegression(), epoc
     """
 
     data_size = model_x.shape[0]
-    data_size_array = np.arange(data_size)
+    indexes = np.arange(data_size)
 
     errors_index = pd.MultiIndex.from_product([
         [learning_rate_name for _, learning_rate_name in learning_rates],
@@ -61,13 +61,11 @@ def sgd(model_x, y, learning_rates, model=linear_models.LinearRegression(), epoc
             print("\r        ", j+1, '/ 3 |  epoch: 0| ' + "-" * (epoch // 5) + " "*(20 - epoch // 5), f"|{epoch:.0f}", end="")
             errors.loc[learning_rate_name][epoch] = metrics.MSE(model.predict(model_x), y[:,np.newaxis]) # Check shapes
             
-            indexes_used = np.zeros(data_size, dtype=bool)
-            for mini_batch in range(1, int(data_size/mini_batch_size) + 1):
-                k = np.random.choice(data_size_array[indexes_used == False], size=(mini_batch_size))
-                indexes_used[k] = True
-
-                y_tilde = model.predict(model_x[k])
-                model.update_parameters(model_x[k], y[k], y_tilde)
+            np.random.shuffle(indexes)
+            mini_batches = indexes.reshape(-1, mini_batch_size)
+            for mini_batch in mini_batches:
+                y_tilde = model.predict(model_x[mini_batch])
+                model.update_parameters(model_x[mini_batch], y[mini_batch], y_tilde)
 
         print("")
 
@@ -107,6 +105,7 @@ def plot_sgd(model_x, y, title, learning_rates, subplots_kwargs, **sgd_kwargs):
         kwargs.update(subplot_kwargs)
 
         errors = sgd(model_x, y, learning_rates, **kwargs)
+
         plot_y = []
         for j, (_, learning_rate_name) in enumerate(learning_rate_iter):
             error_for_learning_rate = errors.loc[learning_rate_name]
@@ -114,6 +113,7 @@ def plot_sgd(model_x, y, title, learning_rates, subplots_kwargs, **sgd_kwargs):
             max_errors = error_for_learning_rate.max(axis=0).to_numpy()
             best_index = error_for_learning_rate[kwargs['epochs']].idxmin()
             best_errors = error_for_learning_rate.loc[best_index].to_numpy()
+
             plot_y.append((np.concatenate((min_errors[np.newaxis,:], best_errors[np.newaxis,:], max_errors[np.newaxis,:]), axis=0), {'color_MSE': 'C'+str(j+1), 'color_shading': 'C'+str(j+1)}))
 
         model = linear_models.LinearRegression()
