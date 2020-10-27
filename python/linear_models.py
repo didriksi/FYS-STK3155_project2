@@ -62,6 +62,7 @@ class LinearRegression:
     def __init__(self, name="OLS", scaler=StandardScaler()):
         self.name = name
         self.scaler = scaler
+        self._lambda = 0
 
     def fit(self, X, y):
         """Fit a beta array of parameters to some predictor and dependent variable
@@ -95,6 +96,24 @@ class LinearRegression:
         """
         y_pred = X @ self.beta
         return y_pred
+
+    def compile(self, beta_shape, learning_rate=0, momentum=0, beta_initialiser=lambda shape: np.random.randn(*shape)):
+        self.momentum = momentum
+        self.beta = beta_initialiser(beta_shape)
+        self.velocity = np.zeros_like(self.beta)
+        self.step = 0
+        self.set_learning_rate(learning_rate)
+
+    def set_learning_rate(self, learning_rate):
+        self.learning_rate = learning_rate if callable(learning_rate) else lambda step: learning_rate
+
+    def cost_diff(self, X, n, y, y_tilde):
+        return np.dot(X.T, 2/n*(y_tilde - y[:,np.newaxis])) + 2*self._lambda*self.beta #TODO: Fix shape
+
+    def update_parameters(self, X, n, y, y_tilde):
+        self.velocity = self.velocity*self.momentum + self.learning_rate(self.step)*self.cost_diff(self, X, n, y, y_tilde)
+        self.beta -= self.velocity
+        self.step += 1
 
     def conf_interval_beta(self, y, y_pred, X):
         """Estimates the 99% confidence interval for array of parameters beta.
@@ -159,6 +178,9 @@ class RegularisedLinearRegression(LinearRegression):
                     Dependent variable.
         """
         self.beta = self.beta_func(self._lambda, X, y)
+
+    def cost_diff(self, X, n, y, y_tilde):
+        return super().cost_diff(X, n, y, y_tilde) + 2*self._lambda*self.beta
 
     def conf_interval_beta(self, y, y_pred, X):
         """Does nothing. Only here to give an error if someone tries to call it, because its super class has one that works.
