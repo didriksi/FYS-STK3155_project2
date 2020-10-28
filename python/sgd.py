@@ -65,7 +65,8 @@ def sgd(model_x, y, learning_rates, model=linear_models.LinearRegression(), epoc
             mini_batches = indexes.reshape(-1, mini_batch_size)
             for mini_batch in mini_batches:
                 y_tilde = model.predict(model_x[mini_batch])
-                model.update_parameters(model_x[mini_batch], y[mini_batch], y_tilde)
+                gradient = model.gradient(model_x[mini_batch], y[mini_batch], y_tilde)
+                model.update_parameters(gradient)
 
         print("")
 
