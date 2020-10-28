@@ -130,7 +130,7 @@ class LinearRegression:
         """
         self.learning_rate = learning_rate if callable(learning_rate) else lambda step: learning_rate
 
-    def cost_diff(self, X, y, y_tilde):
+    def gradient(self, X, y, y_tilde):
         """Differentiates MSE for given data.
         
         Parameters:
@@ -150,19 +150,15 @@ class LinearRegression:
         """
         return np.dot(X.T, 2/X.shape[0]*(y_tilde - y[:,np.newaxis])) + 2*self._lambda*self.beta
 
-    def update_parameters(self, X, y, y_tilde):
+    def update_parameters(self, gradient):
         """Performs one step of gradient descent.
 
         Parameters:
         -----------
-        X:          2-dimensional array
-                    Design matrix with rows as data points and columns as features.
-        y:          1-dimensional array
-                    Actual dependent variable.
-        y_tilde:    1-dimensional array
-                    Predicted dependent variable.
+        gradient:   array of same shape as beta
+                    Gradient calculated by something like self.gradient()
         """
-        self.velocity = self.velocity*self.momentum + self.learning_rate(self.step)*self.cost_diff(X, y, y_tilde)
+        self.velocity = self.velocity*self.momentum + self.learning_rate(self.step)*gradient
         self.beta -= self.velocity
         self.step += 1
 
@@ -230,7 +226,7 @@ class RegularisedLinearRegression(LinearRegression):
         """
         self.beta = self.beta_func(self._lambda, X, y)
 
-    def cost_diff(self, X, y, y_tilde):
+    def gradient(self, X, y, y_tilde):
         """Differentiates MSE for given data.
         
         Parameters:
@@ -247,7 +243,7 @@ class RegularisedLinearRegression(LinearRegression):
         gradient:   array
                     Differentiated MSE.
         """
-        return super().cost_diff(X, y, y_tilde) + 2*self._lambda*self.beta
+        return super().gradient(X, y, y_tilde) + 2*self._lambda*self.beta
 
     def conf_interval_beta(self, y, y_pred, X):
         """Does nothing. Only here to give an error if someone tries to call it, because its super class has one that works.
