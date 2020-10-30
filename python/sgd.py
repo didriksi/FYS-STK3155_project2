@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
+import sys
 
 import tune
 import metrics
@@ -192,7 +193,7 @@ def textify_dict(dictionary):
             string_list.append(f"{key}: {value}")
     return ' '.join(string_list)
 
-def plot_sgd_errors(sgd_errors_df):
+def plot_sgd_errors(sgd_errors_df, title):
     """Takes a dataframe of errors, and formats it in a way that plotting.side_by_side can handle.
 
     Parameters:
@@ -267,39 +268,85 @@ def make_models(model_class, common_kwargs, subplot_uniques, subplot_copies, sub
             models.append(subplot_models)
     return models
 
+
+
 if __name__ == '__main__':
+    def conf_interval_plot(data):
+        polynomials = 8
+        X_train = tune.poly_design_matrix(polynomials, data['x_train'])
+        
+        title = ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval']
+        
+        common_ols_kwargs = {'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
+        common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
+        subplot_ols_uniques = [{}]
+        subplot_ridge_uniques = [{'_lambda': 0.01}, {'_lambda': 0.001}]
+        subsubplot_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-3, -1, 3)]
+
+        unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size} for mini_batch_size in [10, 20, 40]]
+
+        ols_models = make_models(
+            linear_models.LinearRegression,
+            common_ols_kwargs,
+            subplot_ols_uniques,
+            len(unique_sgd_kwargs),
+            subsubplot_linear_uniques
+            )
+        ridge_models = make_models(
+            linear_models.RegularisedLinearRegression,
+            common_ridge_kwargs,
+            subplot_ridge_uniques,
+            len(unique_sgd_kwargs),
+            subsubplot_linear_uniques
+            )
+
+        subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ols_models + ridge_models, unique_sgd_kwargs*3)]
+
+        errors = sgd_on_models(X_train, data['y_train'], title, *subplots, epochs=150)
+
+        plot_sgd_errors(errors)
+
+    def momemtun_plot(data):
+        polynomials = 8
+        X_train = tune.poly_design_matrix(polynomials, data['x_train'])
+
+        title = ['Confidence interval for different momentums and learning rates', 'momentum']
+        
+        common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
+        subplot_ridge_uniques = [{'momentum': 0.9}, {'momentum': 0.6}, {'momentum': 0.3}, {'momentum': 0.}]
+        subsubplot_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-3, -1, 3)]
+
+        unique_sgd_kwargs = [{'mini_batch_size': 10}]
+
+        ridge_models = make_models(
+            linear_models.RegularisedLinearRegression,
+            common_ridge_kwargs,
+            subplot_ridge_uniques,
+            len(unique_sgd_kwargs),
+            subsubplot_linear_uniques
+            )
+
+        subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ridge_models, unique_sgd_kwargs*len(ridge_models))]
+
+        errors = sgd_on_models(X_train, data['y_train'], title, *subplots, epochs=150)
+
+        plot_sgd_errors(errors, title)
+
+    def neural_plot(data):
+        pass
+
     import real_terrain
     data = real_terrain.get_data(20)
-    polynomials = 8
-    X_train = tune.poly_design_matrix(polynomials, data['x_train'])
 
-    title = ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval']
-    
-    common_ols_kwargs = {'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
-    common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
-    subplot_ols_uniques = [{}]
-    subplot_ridge_uniques = [{'_lambda': 0.01}, {'_lambda': 0.001}]
-    subsubplot_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-3, -1, 3)]
+    if 'conf' in sys.argv:
+        conf_interval_plot(data)
+    if 'momentum' in sys.argv:
+        momemtun_plot(data)
+    if 'neural' in sys.argv:
+        neural_plot(data)
 
-    unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size} for mini_batch_size in [10, 20, 40]]
 
-    ols_models = make_models(
-        linear_models.LinearRegression,
-        common_ols_kwargs,
-        subplot_ols_uniques,
-        len(unique_sgd_kwargs),
-        subsubplot_linear_uniques
-        )
-    ridge_models = make_models(
-        linear_models.RegularisedLinearRegression,
-        common_ridge_kwargs,
-        subplot_ridge_uniques,
-        len(unique_sgd_kwargs),
-        subsubplot_linear_uniques
-        )
 
-    subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ols_models + ridge_models, unique_sgd_kwargs*3)]
 
-    errors = sgd_on_models(X_train, data['y_train'], title, *subplots, epochs=150)
 
-    plot_sgd_errors(errors)
+
