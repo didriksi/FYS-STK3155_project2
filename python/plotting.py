@@ -62,6 +62,9 @@ def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), ti
     elif len(plots) <= 8:
         fig = plt.figure(figsize=(15, len(plots)*2))
         subplot_shape = (2, int(len(plots)/2))
+    elif len(plots) == 9:
+        fig = plt.figure(figsize=(15, len(plots)*2))
+        subplot_shape = (3, int(len(plots)/3))
 
     fig.suptitle(title[0] if isinstance(title, list) else title)
 
@@ -72,7 +75,7 @@ def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), ti
         ylim = (np.min(y0), np.max(y0))
     
     axs = []
-    for i, (ax_title, x, y) in enumerate(plots):
+    for i, (ax_title, x, y, *legend) in enumerate(plots):
         axs.append(fig.add_subplot(*subplot_shape, i+1, projection=projection))
         axs[i].set_title(ax_title)
         
@@ -90,20 +93,20 @@ def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), ti
             this_plotter(axs[i], x, _y, *plotter_args, **plotter_kwargs)
 
             ylim = (min(np.min(_y), ylim[0]), max(np.max(_y), ylim[1]))
+
+        if legend is not None:
+            legend_args = legend[0][0]
+            legend_kwargs = legend[0][1]
+
+            axs[i].legend(*legend_args, **legend_kwargs)
+        else:
+            axs[i].legend()
         
     for ax in axs:
         ax.set_xlabel(axis_labels[0])
         ax.set_ylabel(axis_labels[1])
         if 'yscale' in kwargs:
             ax.set_yscale(kwargs['yscale'])
-
-        if 'legend' in kwargs:
-            legend_args = kwargs['legend'][0]
-            legend_kwargs = kwargs['legend'][1]
-
-            ax.legend(*legend_args, **legend_kwargs)
-        else:
-            ax.legend()
 
         if projection == '3d':
             if 'view_angles' in kwargs:
