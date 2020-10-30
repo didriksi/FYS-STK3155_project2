@@ -41,7 +41,7 @@ def sgd(model, x, y, epochs=50, mini_batch_size=1, metric=metrics.MSE):
     errors = np.empty((model.parallell_runs, epochs)) # TODO: Change order?
 
     for epoch in range(epochs):
-        print("\r        ", '/ 3 |  epoch: 0| ' + "-" * (epoch+1 // 5) + " "*(20 - epoch+1 // 5), f"|{epoch+1:.0f}", end="")
+        
         errors[:,epoch] = metrics.MSE(model.predict(x), y[:,np.newaxis])
         
         np.random.shuffle(indexes)
@@ -49,8 +49,6 @@ def sgd(model, x, y, epochs=50, mini_batch_size=1, metric=metrics.MSE):
         for mini_batch in mini_batches:
             y_tilde = model.predict(x[mini_batch])
             model.update_parameters(x[mini_batch], y[mini_batch], y_tilde)
-
-    print("")
 
     return model, errors
 
@@ -89,6 +87,9 @@ def sgd_on_models(x, y, title, *subplots, **sgd_kwargs):
 
     errors = np.empty((len(subplots), len(subplots[0][0]), subplots[0][0][0].parallell_runs, default_sgd_kwargs['epochs']))
 
+    step = 0
+    end_step = len([model for (models, _) in subplots for model in models])
+
     labels_list = []
     title_dicts = []
     for i, (models, subplot_sgd_kwargs) in enumerate(subplots):
@@ -103,7 +104,11 @@ def sgd_on_models(x, y, title, *subplots, **sgd_kwargs):
             subplot_dict.update(sgd_kwargs)
             subplot_labels.append(subplot_dict)
 
+            step += 1
+            print(f"\r |{'='*(step*50//end_step)}{' '*(50-step*50//end_step)} | {step/end_step:.2%}", end="", flush=True)
+
             model, errors[i,j] = sgd(model, x, y, **sgd_kwargs)
+            
 
         # Make dictionaries and eventually strings describing the unique aspects of each subplot and subsubplot
         filtered_labels_dicts, title_dict = filter_dicts(subplot_labels)
@@ -121,6 +126,7 @@ def sgd_on_models(x, y, title, *subplots, **sgd_kwargs):
 
     errors_df.to_csv('../dataframes/errors.csv')
 
+    print("")
     return errors_df
 
 def filter_dicts(dicts):
@@ -304,7 +310,7 @@ if __name__ == '__main__':
 
         errors = sgd_on_models(X_train, data['y_train'], title, *subplots, epochs=150)
 
-        plot_sgd_errors(errors)
+        plot_sgd_errors(errors, title)
 
     def momemtun_plot(data):
         polynomials = 8
