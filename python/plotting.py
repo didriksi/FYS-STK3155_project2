@@ -5,6 +5,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from matplotlib.animation import FuncAnimation
 import matplotlib.patches as mpatches
+import matplotlib.text as text
 plt.style.use('ggplot')
 
 simple_plotter = lambda ax, x, y, *args, **kwargs: ax.plot(x, y, *args, **kwargs)
@@ -50,8 +51,9 @@ def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), ti
                 Default is lambda ax, x, y, *args, **kwargs: ax.plot(x, y, *args, **kwargs)
     axis_labels:(str, str, str)
                 Labels for each axis. Default is ['x', 'y', 'z']
-    title:      str or (str, str)
+    title:      str, (str, str), or (str, str, str)
                 Title for entire plot and filename. If list of two strings the second element is filename.
+                If list of three strings, the last one is suptitle.
     view_angles:(float, float)
                 Elevation and azimuth angles of plot if projection=='3d'.
     """
@@ -66,7 +68,10 @@ def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), ti
         fig = plt.figure(figsize=(15, len(plots)*2))
         subplot_shape = (3, int(len(plots)/3))
 
-    fig.suptitle(title[0] if isinstance(title, list) else title)
+    fig.suptitle(title[0] if isinstance(title, list) else title, y = 0.96, fontsize=22)
+    if isinstance(title, list) and len(title) == 3:
+        fig.text(0.02, 0.02, (title[2] if isinstance(title, list) else title), fontsize=14)
+        
 
     y0 = plots[0][2]
     if isinstance(y0, list):

@@ -52,7 +52,7 @@ def sgd(model, x, y, epochs=50, mini_batch_size=1, metric=metrics.MSE):
 
     return model, errors
 
-def sgd_on_models(x, y, title, *subplots, **sgd_kwargs):
+def sgd_on_models(x, y, *subplots, **sgd_kwargs):
     """Does Stochastic Gradient Descent on models with different parameters, and returns errors DataFrame.
 
     The heart of the pipeline make_models->sgd_on_models->plot_sgd_errors, where sgd and plotting.side_by_side
@@ -67,8 +67,6 @@ def sgd_on_models(x, y, title, *subplots, **sgd_kwargs):
                 Array with data useable by model, with each datapoint being a row.
     y:          array of shape (n, )
                 Array with target data.
-    title:      str or (str, str)
-                Title for entire plot and filename. If list of two strings the second element is filename.
     *subplots:  (models, sgd kwargs)
                 Each tuples first element is a list of models to be tested together, while the second is kwargs passed to sgd().
                 The results is plotted as a subplot.
@@ -127,7 +125,7 @@ def sgd_on_models(x, y, title, *subplots, **sgd_kwargs):
     errors_df.to_csv('../dataframes/errors.csv')
 
     print("")
-    return errors_df
+    return errors_df, plot_title
 
 def filter_dicts(dicts):
     """Splits list of dictionaries into what is common, and what is unique with them.
@@ -281,8 +279,6 @@ if __name__ == '__main__':
         polynomials = 8
         X_train = tune.poly_design_matrix(polynomials, data['x_train'])
         
-        title = ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval']
-        
         common_ols_kwargs = {'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
         common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
         subplot_ols_uniques = [{}]
@@ -308,7 +304,9 @@ if __name__ == '__main__':
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ols_models + ridge_models, unique_sgd_kwargs*3)]
 
-        errors = sgd_on_models(X_train, data['y_train'], title, *subplots, epochs=150)
+        errors, subtitle = sgd_on_models(X_train, data['y_train'], *subplots, epochs=150)
+
+        title = ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval', subtitle]
 
         plot_sgd_errors(errors, title)
 
@@ -316,7 +314,7 @@ if __name__ == '__main__':
         polynomials = 8
         X_train = tune.poly_design_matrix(polynomials, data['x_train'])
 
-        title = ['Confidence interval for different momentums and learning rates', 'momentum']
+        
         
         common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
         subplot_ridge_uniques = [{'momentum': 0.9}, {'momentum': 0.6}, {'momentum': 0.3}, {'momentum': 0.}]
@@ -334,7 +332,9 @@ if __name__ == '__main__':
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ridge_models, unique_sgd_kwargs*len(ridge_models))]
 
-        errors = sgd_on_models(X_train, data['y_train'], title, *subplots, epochs=150)
+        errors, subtitle = sgd_on_models(X_train, data['y_train'], *subplots, epochs=150)
+
+        title = ['Confidence interval for different momentums and learning rates', 'momentum', subtitle]
 
         plot_sgd_errors(errors, title)
 
