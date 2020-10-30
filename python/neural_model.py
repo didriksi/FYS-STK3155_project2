@@ -4,14 +4,24 @@ import matplotlib.pyplot as plt
 def sigmoid(z):
     return 1/(1 + np.exp(-z))
 
-
-def sigmoidPrime(z):
+def sigmoid_diff(z):
     return sigmoid(z)*(1-sigmoid(z))
 
+def ReLu(z):
+    return np.where(z > 0, z, 0)
+
+def ReLu_diff(z):
+    z = np.where(z <= 0, z, 1)
+    return np.where(z > 0, z, 0)
+
+def linear(z):
+    return z
+
+def linear_diff(z):
+    return np.ones(z.shape)
 
 def cost(actualOutput, optimal_output):
     return np.square(optimal_output - actualOutput)
-
 
 def cost_diff(actualOutput, optimal_output):
     return 2 * (optimal_output - actualOutput)
@@ -55,7 +65,7 @@ class Dense(Layer):
                 array of floats -> array of floats
                 Differentiation of activation function.
     """
-    def __init__(self, height, activation=sigmoid, diff_activation=sigmoidPrime):
+    def __init__(self, height, activation=sigmoid, diff_activation=sigmoid_diff):
         super().__init__(height)
         self.z = np.zeros_like(self.a)
         self.d = np.zeros_like(self.a)
@@ -69,7 +79,9 @@ class Dense(Layer):
         prevLayer:  array of floats
                     Activation values from previous layer
         """
+
         self.z = np.dot(prevLayer.a, self.weights) + self.bias
+
         self.a = self.activation(self.z)
 
     def back_propagate(self, nextLayer):
@@ -87,8 +99,6 @@ class Dense(Layer):
         self.weights = np.random.normal(0, 1, (prevLayerHeight, self.height))
         self.bias = np.random.normal(0, 1, self.height)
 
-
-
 class Output(Dense):
     """Output layer for neural network.
 
@@ -104,8 +114,8 @@ class Output(Dense):
     cost_diff:  array of floats -> array of floats
                 Differentiation of cost function.
     """
-    def __init__(self, height, activation=sigmoid, diff_activation=sigmoidPrime, cost_diff=cost_diff):
-        super().__init__(height, activation, diff_activation)
+    def __init__(self, height, activation=sigmoid, diff_activation=sigmoid_diff, cost_diff=cost_diff):
+        super().__init__(height, activation=activation, diff_activation=diff_activation)
         self.cost_diff = cost_diff
 
     def back_propagate(self, optimal):
@@ -116,6 +126,7 @@ class Output(Dense):
         optimal:    array of floats
                     Optimal output.
         """
+
         self.d = self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
 
 
@@ -149,11 +160,8 @@ class Network:
 
         Also functions as a reset to random initial conditions.
         """
-        theta = self.theta.tolist()
         for i in range(1, len(self.network)):
             self.network[i].set_prevLayer(self.network[i-1].height)
-            theta.append((self.network[i].weights, self.network[i].bias))
-        self.theta = np.array(theta, dtype=object)
         self.network = np.asarray(self.network)
 
     def feed_forward(self, input_neurons):
@@ -166,21 +174,34 @@ class Network:
                     Input values. Must have same shape as input layer.
         """
         self.network[0].a = input_neurons
+
+
         for i in range(1, len(self.network)):
             self.network[i].feed_forward(self.network[i-1])
 
     def predict(self, x):
+        """ Predicts on x
+
+        Parameters:
+        -----------
+        x:          array of floats
+
+        Returns:
+        prediction: array of prediction(s)
+        """
         self.feed_forward(x)
         return self.network[-1].a
 
-    def back_propagate(self, optimal_output):
+    def update_parameters(self, x, optimal_output, ytilde):
         """Propagates the error back through the network, and steps in a direction of less loss.
         
         Parameters:
         -----------
+        x:          for compatibility with sgd
         optimal_output:
                     array of floats
                     Optimal or desired output values. Must have same shape as output layer.
+        y:          for compatibility with sgd
         """
 
         for i in reversed(range(1, len(self.network))):
@@ -193,51 +214,6 @@ class Network:
 
             self.network[i].bias += np.mean(self.network[i].d, axis=0) * self.learning_rate
             self.network[i].weights += np.dot(self.network[i - 1].a.T, self.network[i].d) * self.learning_rate
-
-    def backprop(self, input, optimal_output):
-        """
-
-        Args:
-            input: input data
-            optimal_output: target data
-
-        Returns:
-            nabla_b: gradient of bias
-            nabla_w: gradient of weights
-        """
-
-        nabla_b = []
-        nabla_w = []
-        self.feed_forward(input)
-        for i in reversed(range(1, len(self.network))):
-            if i == len(self.network) - 1:
-                backprop_data = optimal_output
-            else:
-                backprop_data = self.network[i+1]
-            self.network[i].back_propagate(backprop_data)
-
-            nabla_b.append(np.mean(self.network[i].d, axis=0))
-            nabla_w.append(np.dot(self.network[i - 1].a.T, self.network[i].d))
-
-        return nabla_b, nabla_w
-
-    def update_parameters(self, mini_batch_x):
-        nabla_b = []
-        nabla_w = []
-        for i in reversed(range(1, len(self.network))):
-            nabla_b.append(np.zeros_like(self.network[i].bias))
-            nabla_w.append(np.zeros_like(self.network[i].weights))
-
-        for x in mini_batch_x:
-            delta_nabla_b, delta_nabla_w = self.backprop(x[0], x[1])
-            nabla_b = [nb + dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
-            nabla_w = [nw + dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
-
-        nabla_b.reverse()
-        nabla_w.reverse()
-        for i in reversed(range(1, len(self.network))):
-            self.network[i].weights += nabla_w[i-1]*self.learning_rate
-            self.network[i].bias += nabla_b[i-1]*self.learning_rate
 
     def __str__(self):
         """Returns a printable string with all the networks biases and weights.
