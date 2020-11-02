@@ -59,10 +59,15 @@ class LinearRegression:
     scaler:     object
                 Instance of class that has a fit and transform method for scaling predictor data.
     """
-    def __init__(self, name="OLS", scaler=StandardScaler()):
+    def __init__(self, name="OLS", scaler=StandardScaler(), x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.random.randn(*shape)):
         self.name = name
         self.scaler = scaler
         self._lambda = 0
+        self.momentum = momentum
+        self.beta = beta_initialiser((x_shape, init_conds))
+        self.velocity = np.zeros_like(self.beta)
+        self.step = 0
+        self.learning_rate = learning_rate if callable(learning_rate) else lambda step: learning_rate
 
     def fit(self, X, y):
         """Fit a beta array of parameters to some predictor and dependent variable
@@ -97,7 +102,7 @@ class LinearRegression:
         y_pred = X @ self.beta
         return y_pred
 
-    def compile(self, beta_shape, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.random.randn(*shape)):
+    def compile(self, x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.random.randn(*shape)):
         """Prepares the model for training by gradient descent.
         
         Parameters:
@@ -114,23 +119,12 @@ class LinearRegression:
                     Function that returns initial beta with shape decided by beta_shape. Default is standard normal.
         """
         self.momentum = momentum
-        self.beta = beta_initialiser(beta_shape)
+        self.beta = beta_initialiser((x_shape, init_conds))
         self.velocity = np.zeros_like(self.beta)
         self.step = 0
-        self.set_learning_rate(learning_rate)
-
-    def set_learning_rate(self, learning_rate):
-        """Sets learning rate.
-        
-        Parameters:
-        -----------
-        learning_rate:
-                    (int -> float) or float
-                    Either function that takes in step number and returns float, or just a float.
-        """
         self.learning_rate = learning_rate if callable(learning_rate) else lambda step: learning_rate
 
-    def gradient(self, X, y, y_tilde):
+    def get_gradient(self, X, y, y_tilde):
         """Differentiates MSE for given data.
         
         Parameters:
@@ -150,17 +144,39 @@ class LinearRegression:
         """
         return np.dot(X.T, 2/X.shape[0]*(y_tilde - y[:,np.newaxis])) + 2*self._lambda*self.beta
 
-    def update_parameters(self, gradient):
+    def update_parameters(self, X, y, y_tilde):
         """Performs one step of gradient descent.
 
         Parameters:
         -----------
-        gradient:   array of same shape as beta
-                    Gradient calculated by something like self.gradient()
+        X:          2-dimensional array
+                    Design matrix with rows as data points and columns as features.
+        y:          1-dimensional array
+                    Actual dependent variable.
+        y_tilde:    1-dimensional array
+                    Predicted dependent variable.
         """
-        self.velocity = self.velocity*self.momentum + self.learning_rate(self.step)*gradient
+        self.velocity = self.velocity*self.momentum + self.learning_rate(self.step)*self.get_gradient(X, y, y_tilde)
         self.beta -= self.velocity
         self.step += 1
+
+    @property
+    def property_dict(self):
+        return {'model_name': self.name, 'momentum': self.momentum, 'learning_rate': self.learning_rate_name}
+
+    @property
+    def parallell_runs(self):
+        return self.beta.shape[1]
+
+    @property
+    def learning_rate_name(self):
+        if callable(self.learning_rate):
+            if self.learning_rate.__doc__ is not None:
+                return self.learning_rate.__doc__
+            else:
+                return f"(0): {self.learning_rate(0)}"
+        else:
+            return f": flat {self.learning_rate}"
 
     def conf_interval_beta(self, y, y_pred, X):
         """Estimates the 99% confidence interval for array of parameters beta.
@@ -200,9 +216,10 @@ class RegularisedLinearRegression(LinearRegression):
     scaler:     object
                 Instance of class that has a fit and transform method for scaling predictor data.
     """
-    def __init__(self, name, beta_func, scaler=StandardScaler()):
-        super().__init__(name, scaler)
+    def __init__(self, name, beta_func, _lambda=0.01, scaler=StandardScaler(), x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.random.randn(*shape)):
+        super().__init__(name, scaler, x_shape=x_shape, init_conds=init_conds, learning_rate=learning_rate, momentum=momentum, beta_initialiser=beta_initialiser)
         self.beta_func = beta_func
+        self._lambda = _lambda
 
     def set_lambda(self, _lambda):
         """Sets a specific parameter value for the beta_func.
@@ -226,7 +243,7 @@ class RegularisedLinearRegression(LinearRegression):
         """
         self.beta = self.beta_func(self._lambda, X, y)
 
-    def gradient(self, X, y, y_tilde):
+    def get_gradient(self, X, y, y_tilde):
         """Differentiates MSE for given data.
         
         Parameters:
@@ -243,7 +260,13 @@ class RegularisedLinearRegression(LinearRegression):
         gradient:   array
                     Differentiated MSE.
         """
-        return super().gradient(X, y, y_tilde) + 2*self._lambda*self.beta
+        return super().get_gradient(X, y, y_tilde) + 2*self._lambda*self.beta
+
+    @property
+    def property_dict(self):
+        properties = super().property_dict
+        properties['_lambda'] = self._lambda
+        return properties
 
     def conf_interval_beta(self, y, y_pred, X):
         """Does nothing. Only here to give an error if someone tries to call it, because its super class has one that works.
