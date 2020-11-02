@@ -11,7 +11,7 @@ plt.style.use('ggplot')
 simple_plotter = lambda ax, x, y, *args, **kwargs: ax.plot(x, y, *args, **kwargs)
 trisurface_plotter = lambda ax, x, y, *args, **kwargs: ax.plot_trisurf(x[:,0], x[:,1], _y, *args, cmap=cm.coolwarm, linewidth=0, antialiased=False, **kwargs)
 
-def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color_MSE="C0", color_shading="C0", **kwargs):
+def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color="C0", **kwargs):
     """Plots line with confidence interval, figure must be saved or shown after function call.
 
     Parameters:
@@ -34,8 +34,8 @@ def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color_MSE="
     lower = lower_midddle_upper_y[0]
     middle = lower_midddle_upper_y[1]
     upper = lower_midddle_upper_y[2]
-    ax.fill_between(x, lower, upper, color=color_shading, alpha=.5, **kwargs)
-    ax.plot(x, middle, color_MSE)
+    ax.fill_between(x, lower, upper, color=color, alpha=.5, **kwargs)
+    ax.plot(x, middle, color)
 
 def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), title="plot", projection=None, **kwargs):
     """Plots two plots with the same x side by side. Can also make an animation of them from different angles.
