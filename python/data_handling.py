@@ -44,7 +44,7 @@ def make_data_dict(y, *selection_parameter, random=False):
     else:
         x_sparsity = selection_parameter[0]
         data = {}
-        data['y'] = y[:y.shape[0]//x_sparsity*x_sparsity,:y.shape[1]//x_sparsity*x_sparsity]    
+        data['y'] = y[:y.shape[0]//x_sparsity*x_sparsity,:y.shape[1]//x_sparsity*x_sparsity].astype(float)/400   
 
         # Training data
         x1, x2 = np.meshgrid(np.arange(0, data['y'].shape[0], x_sparsity, dtype=int), np.arange(0, data['y'].shape[1], x_sparsity, dtype=int))
@@ -75,6 +75,8 @@ def make_data_dict(y, *selection_parameter, random=False):
         data['y_train_validate'] = data['y'][data['x_train_validate'][:,0],data['x_train_validate'][:,1]]
 
         data['x_train'] = data['x_train'].astype(float)/400
-        data['y_train'] = data['y_train'].astype(float)/400
+        data['x_train_validate'] = data['x_train_validate'].astype(float)/400
+        data['x_validate'] = data['x_validate'].astype(float)/400
+        data['x_test'] = data['x_test'].astype(float)/400
 
     return data
