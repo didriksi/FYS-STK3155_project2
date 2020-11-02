@@ -137,11 +137,21 @@ class Network:
     learning_rate:
                 float
                 Learning rate for network, used during backpropagation. Should be between 0 and 1.
+    *layers:    keyword arguments used to construct layers
+                Assuming first layer is of type Input, last of type Output, and the one(s) in between Dense.
     """
-    def __init__(self, learning_rate=0.006):
+    def __init__(self, learning_rate=0.006, *layers):
         self.learning_rate = learning_rate
         self.network = []
         self.theta = np.array([], dtype=object)
+
+        for i, layer in enumerate(layers):
+            if i == 0:
+                self.addLayer(Input(**layer))
+            if i == len(layers) - 1:
+                self.addLayer(Output(**layer))
+            else:
+                self.addLayer(Dense(**layer))
 
     def set_learning_rate(self, learning_rate):
         self.learning_rate = learning_rate
