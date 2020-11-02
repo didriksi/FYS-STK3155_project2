@@ -300,54 +300,75 @@ class LegendObject(object):
 
         return patch
 
-    def draw_neural_net(ax, left, right, bottom, top, layer_sizes, layer_text=None):
-        '''
-        Draw a neural network cartoon using matplotilb. Created by github users @craffel and @anbrjohn
 
-        :usage:
-            >> fig = plt.figure(figsize=(12, 12))
-            >> draw_neural_net(fig.gca(), .1, .9, .1, .9, [4, 7, 2], ['x1', 'x2','x3','x4'])
+def draw_neural_net(ax, left, right, bottom, top, layer_sizes, layer_text=None, font="Georgia"):
+    '''
+    Draw a neural network cartoon using matplotilb.
 
-        :parameters:
-            - ax : matplotlib.axes.AxesSubplot
-                The axes on which to plot the cartoon (get e.g. by plt.gca())
-            - left : float
-                The center of the leftmost node(s) will be placed here
-            - right : float
-                The center of the rightmost node(s) will be placed here
-            - bottom : float
-                The center of the bottommost node(s) will be placed here
-            - top : float
-                The center of the topmost node(s) will be placed here
-            - layer_sizes : list of int
-                List of layer sizes, including input and output dimensionality
-            - layer_text : list of str
-                List of node annotations in top-down left-right order
-        '''
-        n_layers = len(layer_sizes)
-        v_spacing = (top - bottom) / float(max(layer_sizes))
-        h_spacing = (right - left) / float(len(layer_sizes) - 1)
-        ax.axis('off')
-        # Nodes
-        for n, layer_size in enumerate(layer_sizes):
-            layer_top = v_spacing * (layer_size - 1) / 2. + (top + bottom) / 2.
-            for m in range(layer_size):
-                x = n * h_spacing + left
-                y = layer_top - m * v_spacing
-                circle = plt.Circle((x, y), v_spacing / 4.,
-                                    color='w', ec='k', zorder=4)
-                ax.add_artist(circle)
-                # Node annotations
-                if layer_text:
-                    text = layer_text.pop(0)
+    Created by github user @craffel. Node annotation added by @@anbrjohn, modifed by @severs-ml.
+    Layer labels added by @severs-ml
+
+    :usage:
+        >> fig = plt.figure(figsize=(12, 12))
+        >> draw_neural_net(fig.gca(), .1, .9, .1, .9, [4, 7, 2], ['x1', 'x2','x3','x4'])
+
+    :parameters:
+        - ax : matplotlib.axes.AxesSubplot
+            The axes on which to plot the cartoon (get e.g. by plt.gca())
+        - left : float
+            The center of the leftmost node(s) will be placed here
+        - right : float
+            The center of the rightmost node(s) will be placed here
+        - bottom : float
+            The center of the bottommost node(s) will be placed here
+        - top : float
+            The center of the topmost node(s) will be placed here
+        - layer_sizes : list of int
+            List of layer sizes, including input and output dimensionality
+        - layer_text : list of str
+            List of node annotations in top-down left-right order
+    '''
+    font_layer = {'fontname': font}
+    n_layers = len(layer_sizes)
+    v_spacing = (top - bottom) / float(max(layer_sizes))
+    h_spacing = (right - left) / float(len(layer_sizes) - 1)
+    ax.axis('off')
+    # Nodes
+    for n, layer_size in enumerate(layer_sizes):
+        layer_top = v_spacing * (layer_size - 1) / 2. + (top + bottom) / 2.
+        for m in range(layer_size):
+            x = n * h_spacing + left
+            y = layer_top - m * v_spacing
+            circle = plt.Circle((x, y), v_spacing / 4.,
+                                color='w', ec='k', zorder=4)
+            ax.add_artist(circle)
+            # Node annotations
+            if layer_text:
+                if len(layer_text[n]) > 0:
+                    text = layer_text[n].pop(0)
                     plt.annotate(text, xy=(x, y), zorder=5, ha='center', va='center')
 
-        # Edges
-        for n, (layer_size_a, layer_size_b) in enumerate(zip(layer_sizes[:-1], layer_sizes[1:])):
-            layer_top_a = v_spacing * (layer_size_a - 1) / 2. + (top + bottom) / 2.
-            layer_top_b = v_spacing * (layer_size_b - 1) / 2. + (top + bottom) / 2.
-            for m in range(layer_size_a):
-                for o in range(layer_size_b):
-                    line = plt.Line2D([n * h_spacing + left, (n + 1) * h_spacing + left],
-                                      [layer_top_a - m * v_spacing, layer_top_b - o * v_spacing], c='k')
-                    ax.add_artist(line)
+    #Layer labels
+
+    input_layer_y = v_spacing * (layer_sizes[0] - 1) / 2. + (top + bottom) / 2. + .08
+    plt.annotate("Input", xy=(0.062, input_layer_y), **font_layer)
+
+    if len(layer_sizes[1:-1]) > 1:
+        text = "Hidden layers"
+    else:
+        text = "Hidden layer"
+    hidden_layer_y = max([v_spacing * (layer_size - 1) / 2. + (top + bottom) / 2. for layer_size in layer_sizes[1:-1]]) + 0.02
+    plt.annotate(text, xy=(0.5, hidden_layer_y+0.07), ha='center', va='center', **font_layer)
+
+    output_layer_y = v_spacing * (layer_sizes[-1] - 1) / 2. + (top + bottom) / 2. + .08
+    plt.annotate("Output", xy=(x-0.05, output_layer_y), **font_layer)
+
+    # Edges
+    for n, (layer_size_a, layer_size_b) in enumerate(zip(layer_sizes[:-1], layer_sizes[1:])):
+        layer_top_a = v_spacing * (layer_size_a - 1) / 2. + (top + bottom) / 2.
+        layer_top_b = v_spacing * (layer_size_b - 1) / 2. + (top + bottom) / 2.
+        for m in range(layer_size_a):
+            for o in range(layer_size_b):
+                line = plt.Line2D([n * h_spacing + left, (n + 1) * h_spacing + left],
+                                  [layer_top_a - m * v_spacing, layer_top_b - o * v_spacing], c='k', lw=0.8)
+                ax.add_artist(line)
