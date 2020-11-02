@@ -25,10 +25,10 @@ def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color_MSE="
                 Lower and upper bound for confidence interval, and the middle line to be emphasized.
     *args:      Not used, only here for compatibility.
     color_MSE:  str
-                ?? TODO: Severin, explain, I don't understand this.
+                Color of MSE of optimal model, C0 gives the next color in normal matplotlib order
     color_shading:
                 str
-                ?? TODO: Severin, explain, I don't understand this.
+                Color of confidence interval, C0 gives the next color in normal matplotlib order
     **kwargs:   Passed onwards to plt.fill_between()
     """
     lower = lower_midddle_upper_y[0]
@@ -138,7 +138,7 @@ def validation_errors(val_errors, bias_variance=False, animation=True, fig_presc
                 Set to false to plot a classic grid-search style still image instead of an animation.
     fig_prescript:
                 str
-                Text put on the beggining of filename.
+                Text put on the beginning of filename.
     """
 
     for model, model_val_errors in val_errors.groupby(level='Model'):
