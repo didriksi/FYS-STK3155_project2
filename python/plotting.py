@@ -9,7 +9,10 @@ import matplotlib.text as text
 plt.style.use('ggplot')
 
 simple_plotter = lambda ax, x, y, *args, **kwargs: ax.plot(x, y, *args, **kwargs)
-trisurface_plotter = lambda ax, x, y, *args, **kwargs: ax.plot_trisurf(x[:,0], x[:,1], _y, *args, cmap=cm.coolwarm, linewidth=0, antialiased=False, **kwargs)
+
+def trisurface_plotter(ax, x, y, *args, **kwargs):
+    print(x[:,0].shape, x[:,1].shape, y.shape, 'args', *args, 'kwargs', **kwargs)
+    ax.plot_trisurf(x[:,0], x[:,1], y, *args, cmap=cm.coolwarm, linewidth=0, antialiased=False, **kwargs)
 
 def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color="C0", **kwargs):
     """Plots line with confidence interval, figure must be saved or shown after function call.
@@ -84,7 +87,7 @@ def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), ti
         axs.append(fig.add_subplot(*subplot_shape, i+1, projection=projection))
         axs[i].set_title(ax_title)
         
-        for _y, *args_kwargs in (y if isinstance(y, list) else [y]):
+        for _y, *args_kwargs in (y if isinstance(y, list) else [[y]]):
             this_plotter = plotter
             plotter_kwargs = {}; plotter_args = []
             for arg_kwarg in args_kwargs:
@@ -99,7 +102,7 @@ def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), ti
 
             ylim = (min(np.min(_y), ylim[0]), max(np.max(_y), ylim[1]))
 
-        if legend is not None:
+        if legend is not None and legend != []:
             legend_args = legend[0][0]
             legend_kwargs = legend[0][1]
 

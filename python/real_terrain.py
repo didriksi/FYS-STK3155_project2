@@ -41,8 +41,10 @@ def plot_data(*data_args, random=False):
         ['Train', data['x_train'], data['y_train']],
         ['Validate', data['x_train'], data['y_train']],
         ['Test', data['x_test'], data['y_test']],
-        title=f"Training, validation and testing data for real terrain",
-        filename=f"real_terrain")
+        title=[f"Training, validation and testing data for real terrain" ,"real_terrain"],
+        plotter=plotting.trisurface_plotter,
+        projection='3d',
+        view_angles=[15, 240])
 
 if __name__ == '__main__':
     plot_data(20)
