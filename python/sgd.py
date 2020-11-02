@@ -217,7 +217,7 @@ def plot_sgd_errors(sgd_errors_df, title):
             best_errors = label_errors.loc(axis=0)[slice(None), slice(None), best_index].to_numpy()
 
             y_ = np.concatenate((min_errors, best_errors, max_errors), axis=0)
-            y.append((y_, {'color_MSE': 'C'+str(j+1), 'color_shading': 'C'+str(j+1)}))
+            y.append((y_, {'color': 'C'+str(j+1)}))
 
             learning_rate_enums = np.arange(len(labels))
             colors = [f"C{number}" for number in learning_rate_enums + 1]
