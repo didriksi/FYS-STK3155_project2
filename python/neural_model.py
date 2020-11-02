@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 def sigmoid(z):
     return 1/(1 + np.exp(-z))
@@ -144,6 +143,9 @@ class Network:
         self.network = []
         self.theta = np.array([], dtype=object)
 
+    def set_learning_rate(self, learning_rate):
+        self.learning_rate = learning_rate
+
     def addLayer(self, layer):
         """Add a layer to network.
         
@@ -155,7 +157,7 @@ class Network:
         self.network.append(layer)
 
 
-    def compile(self):
+    def compile(self, x1=None, x2=None, momentum=None):
         """Compiles the network by initialising weights, and making the list of layers an array.
 
         Also functions as a reset to random initial conditions.
@@ -192,7 +194,7 @@ class Network:
         self.feed_forward(x)
         return self.network[-1].a
 
-    def update_parameters(self, x, optimal_output, ytilde):
+    def gradient(self, x, optimal_output, ytilde):
         """Propagates the error back through the network, and steps in a direction of less loss.
         
         Parameters:
@@ -212,8 +214,13 @@ class Network:
 
             self.network[i].back_propagate(backprop_data)
 
+            #self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
             self.network[i].bias += np.mean(self.network[i].d, axis=0) * self.learning_rate
             self.network[i].weights += np.dot(self.network[i - 1].a.T, self.network[i].d) * self.learning_rate
+
+    def update_parameters(self, x):
+        """For compatibility with sgd"""
+        return None
 
     def __str__(self):
         """Returns a printable string with all the networks biases and weights.
@@ -223,3 +230,13 @@ class Network:
             string += f"Layer {i}\n   Biases: {self.network[i].bias.shape}\n   Weights: {self.network[i].weights.shape}\n"
             #string += f"delta_b = {self.network[i].delta_b.shape}\n delta_w: {self.network[i].delta_w.shape}"
         return string
+
+if __name__ == "__main__":
+    import plotting
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure(figsize=(5, 5))
+    plotting.draw_neural_net(fig.gca(), .1, .9, .1, .9, [3, 4, 4, 3],
+                             [[r'$x_1$', '...', r'$x_M$'], [], [], [r"$y_1$", "...", r"$y_K$"]])
+    plt.tight_layout()
+    plt.show()
