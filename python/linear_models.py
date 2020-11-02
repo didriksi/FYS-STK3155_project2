@@ -217,7 +217,7 @@ class RegularisedLinearRegression(LinearRegression):
                 Instance of class that has a fit and transform method for scaling predictor data.
     """
     def __init__(self, name, beta_func, _lambda=0.01, scaler=StandardScaler(), x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.random.randn(*shape)):
-        super().__init__(name, scaler, x_shape=x_shape, init_conds=init_conds, learning_rate=learning_rate, momentum=momentum, beta_initialiser=beta_initialiser)
+        super().__init__(name=name, scaler=scaler, x_shape=x_shape, init_conds=init_conds, learning_rate=learning_rate, momentum=momentum, beta_initialiser=beta_initialiser)
         self.beta_func = beta_func
         self._lambda = _lambda
 
@@ -272,3 +272,75 @@ class RegularisedLinearRegression(LinearRegression):
         """Does nothing. Only here to give an error if someone tries to call it, because its super class has one that works.
         """
         raise NotImplementedError(f'Can only find confidence interval of beta from OLS, not {name}')
+
+def sigmoid(z):
+    return 1/(1 + np.exp(-z))
+
+def sigmoid_diff(z):
+    return sigmoid(z)*(1-sigmoid(z))
+
+class LogisticRegression(LinearRegression):
+    def __init__(self, name="Logistic", scaler=StandardScaler(), x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.zeros(*shape)):
+        super.__init__(name=name, scaler=scaler, x_shape=x_shape, init_conds=init_conds, learning_rate=learning_rate, momentum=momentum, beta_initialiser=beta_initialiser)
+
+    def predict(self, X):
+        """Predicts new dependent variable based on beta and a new design matrix X.
+
+        Parameters:
+        -----------
+        X:          2-dimensional array
+                    Design matrix with rows as data points and columns as features.
+        
+        Returns:
+        --------
+        y_pred:     1-dimensional array
+                    Predicted dependent variable.
+        """
+        y_pred = sigmoid(X @ self.beta)
+        return y_pred
+
+    def get_gradient(self, X, y, y_tilde):
+        """Differentiates for given data, using cross-entropy.
+        
+        Parameters:
+        -----------
+        X:          2-dimensional array
+                    Design matrix with rows as data points and columns as features.
+        y:          1-dimensional array
+                    Actual dependent variable.
+        y_tilde:    1-dimensional array
+                    Predicted dependent variable.
+
+        Returns:
+        --------
+        gradient:   array
+                    Differentiated MSE.
+
+        """
+        cross_entropy = -np.sum(y_tilde * np.log(y))
+        return cross_entropy
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
