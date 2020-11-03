@@ -78,6 +78,10 @@ def sgd_on_models(x, y, *subplots, **sgd_kwargs):
     --------
     errors_df:  pd.DataFrame
                 Dataframe with titles, initial conditions and labels as multiindex, and epochs as column
+    plot_title: str
+                String with whatever is common between all the plots
+    subplots:   list of (models, sgd kwargs)
+                The same as input subplots, just with all models trained.
     """
 
     default_sgd_kwargs = {'epochs': 100}
@@ -106,7 +110,7 @@ def sgd_on_models(x, y, *subplots, **sgd_kwargs):
             print(f"\r |{'='*(step*50//end_step)}{' '*(50-step*50//end_step)} | {step/end_step:.2%}", end="", flush=True)
 
             model, errors[i,j] = sgd(model, x, y, **sgd_kwargs)
-            
+
 
         # Make dictionaries and eventually strings describing the unique aspects of each subplot and subsubplot
         filtered_labels_dicts, title_dict = filter_dicts(subplot_labels)
@@ -125,7 +129,7 @@ def sgd_on_models(x, y, *subplots, **sgd_kwargs):
     errors_df.to_csv('../dataframes/errors.csv')
 
     print("")
-    return errors_df, plot_title
+    return errors_df, plot_title, subplots
 
 def filter_dicts(dicts):
     """Splits list of dictionaries into what is common, and what is unique with them.
@@ -304,7 +308,7 @@ if __name__ == '__main__':
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ols_models + ridge_models, unique_sgd_kwargs*3)]
 
-        errors, subtitle = sgd_on_models(X_train, data['y_train'], *subplots, epochs=150)
+        errors, subtitle, subplots = sgd_on_models(X_train, data['y_train'], *subplots, epochs=150)
 
         title = ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval', subtitle]
 
@@ -332,7 +336,7 @@ if __name__ == '__main__':
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ridge_models, unique_sgd_kwargs*len(ridge_models))]
 
-        errors, subtitle = sgd_on_models(X_train, data['y_train'], *subplots, epochs=150)
+        errors, subtitle, subplots = sgd_on_models(X_train, data['y_train'], *subplots, epochs=150)
 
         title = ['Confidence interval for different momentums and learning rates', 'momentum', subtitle]
 
