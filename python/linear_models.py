@@ -80,6 +80,7 @@ class LinearRegression:
                     Dependent variable.
         """
         self.beta = np.linalg.pinv(X) @ y
+        return self.beta
 
     def set_lambda(self, _lambda):
         """Does nothing. Only here for compatibility with subclasses that have a lambda parameter.
@@ -242,6 +243,7 @@ class RegularisedLinearRegression(LinearRegression):
                     Dependent variable.
         """
         self.beta = self.beta_func(self._lambda, X, y)
+        return self.beta
 
     def get_gradient(self, X, y, y_tilde):
         """Differentiates MSE for given data.
