@@ -307,12 +307,54 @@ if __name__ == '__main__':
             )
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ols_models + ridge_models, unique_sgd_kwargs*3)]
-
         errors, subtitle, subplots = sgd_on_models(X_train, data['y_train'], *subplots, epochs=150)
 
         title = ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval', subtitle]
-
         plot_sgd_errors(errors, title)
+
+    def beta_variance(data):
+        polynomials = 8
+        X_train = tune.poly_design_matrix(polynomials, data['x_train'])
+        
+        common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 10, 'x_shape': X_train.shape[1]}
+        subplot_ridge_uniques = [{'_lambda': 0.01}, {'_lambda': 0.001}]
+        subsubplot_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-2, -1, 3)]
+
+        unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size} for mini_batch_size in [10, 20, 40]]
+
+        ridge_models = make_models(
+            linear_models.RegularisedLinearRegression,
+            common_ridge_kwargs,
+            subplot_ridge_uniques,
+            len(unique_sgd_kwargs),
+            subsubplot_linear_uniques
+            )
+
+        subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ridge_models, unique_sgd_kwargs*2)]
+        errors, subtitle, subplots = sgd_on_models(X_train, data['y_train'], *subplots, epochs=2000)
+
+        title = ['Convergence test', 'convergence', subtitle]
+        plot_sgd_errors(errors, title)
+
+        models = [model for models, _ in subplots for model in models]
+        sgd_betas = np.array([model.beta for model in models]) # This needs to take in the different beta values, but now makes an array of some other dtype perhaps
+        optimal_betas = np.array([model.fit(X_train, data['y_train']) for model in models])
+        sgd_beta_intervals = np.array([np.min(sgd_betas, axis=(1,2)), np.mean(sgd_betas, axis=(1,2)), np.max(sgd_betas, axis=(1,2))])
+        optimal_beta_intervals = np.array([np.min(optimal_betas, axis=1), np.mean(optimal_betas, axis=(1,2), np.max(optimal_betas, axis=1)])
+
+        print(sgd_betas.shape, optimal_betas.shape, sgd_beta_intervals.shape, optimal_beta_intervals.shape)
+
+        side_by_side_parameters = {
+            'plotter': plotting.confidence_interval_plotter,
+            'axis_labels': ('Beta parameter #', 'Values'),
+            'title': ['Beta parameters', 'beta'],
+        }
+        plot = ['', np.arange(sgd_beta_intervals.shape[0]), [[sgd_beta_intervals.T, {'label': 'SGD', 'color': 'C0'}], [optimal_beta_intervals.T, {'label': 'Analytical', 'color': 'C1'}]]]
+        plotting.side_by_side(plot, **side_by_side_parameters)
+
+        print(sgd_beta_intervals)
+        print(optimal_beta_intervals)
+
 
     def momemtun_plot(data):
         polynomials = 8
@@ -354,6 +396,8 @@ if __name__ == '__main__':
         momemtun_plot(data)
     if 'neural' in sys.argv:
         neural_plot(data)
+    if 'betas' in sys.argv:
+        beta_variance(data)
 
 
 
