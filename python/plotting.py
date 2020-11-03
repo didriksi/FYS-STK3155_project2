@@ -24,7 +24,7 @@ def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color="C0",
     x:          array of shape (n, )
                 x positions
     lower_midddle_upper_y:
-                array of shape (3, n)
+                array of shape (3, n) or array of shape (2, n)
                 Lower and upper bound for confidence interval, and the middle line to be emphasized.
     *args:      Not used, only here for compatibility.
     color_MSE:  str
@@ -35,10 +35,14 @@ def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color="C0",
     **kwargs:   Passed onwards to plt.fill_between()
     """
     lower = lower_midddle_upper_y[0]
-    middle = lower_midddle_upper_y[1]
-    upper = lower_midddle_upper_y[2]
+    if lower_midddle_upper_y.shape[0] == 3:
+        middle = lower_midddle_upper_y[1]
+        upper = lower_midddle_upper_y[2]
+        ax.plot(x, middle, color)
+    else:
+        upper = lower_midddle_upper_y[1]
+    
     ax.fill_between(x, lower, upper, color=color, alpha=.5, **kwargs)
-    ax.plot(x, middle, color)
 
 def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), title="plot", projection=None, **kwargs):
     """Plots two plots with the same x side by side. Can also make an animation of them from different angles.
