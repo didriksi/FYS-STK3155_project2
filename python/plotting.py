@@ -65,7 +65,7 @@ def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), ti
         fig = plt.figure(figsize=(len(plots)*5, 5))
         subplot_shape = (1, len(plots))
     elif len(plots) <= 8:
-        fig = plt.figure(figsize=(15, len(plots)*2))
+        fig = plt.figure(figsize=(len(plots)*3, 15))
         subplot_shape = (2, int(len(plots)/2))
     elif len(plots) == 9:
         fig = plt.figure(figsize=(15, len(plots)*2))
