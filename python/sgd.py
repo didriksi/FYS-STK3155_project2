@@ -338,22 +338,18 @@ if __name__ == '__main__':
 
         models = [model for models, _ in subplots for model in models]
         sgd_betas = np.array([model.beta for model in models]) # This needs to take in the different beta values, but now makes an array of some other dtype perhaps
-        optimal_betas = np.array([model.fit(X_train, data['y_train']) for model in models])
-        sgd_beta_intervals = np.array([np.min(sgd_betas, axis=(1,2)), np.mean(sgd_betas, axis=(1,2)), np.max(sgd_betas, axis=(1,2))])
-        optimal_beta_intervals = np.array([np.min(optimal_betas, axis=1), np.mean(optimal_betas, axis=(1,2), np.max(optimal_betas, axis=1)])
 
-        print(sgd_betas.shape, optimal_betas.shape, sgd_beta_intervals.shape, optimal_beta_intervals.shape)
+        optimal_betas = np.array([model.fit(X_train, data['y_train']) for model in models ])
+        sgd_beta_intervals = np.array([np.min(sgd_betas, axis=(0,2)), np.mean(sgd_betas, axis=(0,2)), np.max(sgd_betas, axis=(0,2))])
+        optimal_beta_intervals = np.array([np.min(optimal_betas, axis=0), np.mean(optimal_betas, axis=0), np.max(optimal_betas, axis=0)])
 
         side_by_side_parameters = {
             'plotter': plotting.confidence_interval_plotter,
             'axis_labels': ('Beta parameter #', 'Values'),
             'title': ['Beta parameters', 'beta'],
         }
-        plot = ['', np.arange(sgd_beta_intervals.shape[0]), [[sgd_beta_intervals.T, {'label': 'SGD', 'color': 'C0'}], [optimal_beta_intervals.T, {'label': 'Analytical', 'color': 'C1'}]]]
+        plot = ['', np.arange(sgd_beta_intervals.shape[1]), [[sgd_beta_intervals, {'label': 'SGD', 'color': 'C0'}], [optimal_beta_intervals, {'label': 'Analytical', 'color': 'C1'}]]]
         plotting.side_by_side(plot, **side_by_side_parameters)
-
-        print(sgd_beta_intervals)
-        print(optimal_beta_intervals)
 
 
     def momemtun_plot(data):
