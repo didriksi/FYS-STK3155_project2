@@ -19,11 +19,20 @@ def linear(z):
 def linear_diff(z):
     return np.ones(z.shape)
 
+def softmax(z):
+    e_z = np.exp(z)
+    return e_z/np.sum(e_z)
+
+def softmax_diff(z):
+    z = z.reshape(-1,1)
+    return np.diagflat(z) - np.dot(z, z.T)
+
 def cost(actualOutput, optimal_output):
     return np.square(optimal_output - actualOutput)
 
 def cost_diff(actualOutput, optimal_output):
     return 2 * (optimal_output - actualOutput)
+
 
 
 class Layer:
@@ -98,6 +107,9 @@ class Dense(Layer):
         self.weights = np.random.normal(0, 1, (prevLayerHeight, self.height))
         self.bias = np.random.normal(0, 1, self.height)
 
+        self.weights_velocity = np.zeros_like(self.weights)
+        self.bias_velocity = np.zeros_like(self.bias)
+
 class Output(Dense):
     """Output layer for neural network.
 
@@ -140,18 +152,40 @@ class Network:
     *layers:    keyword arguments used to construct layers
                 Assuming first layer is of type Input, last of type Output, and the one(s) in between Dense.
     """
-    def __init__(self, learning_rate=0.006, *layers):
+    def __init__(self, layers=[], name="Neural", momentum=0, learning_rate=0.006):
+        self.name = name
         self.learning_rate = learning_rate
         self.network = []
         self.theta = np.array([], dtype=object)
+        self.momentum = momentum
 
         for i, layer in enumerate(layers):
             if i == 0:
                 self.addLayer(Input(**layer))
             if i == len(layers) - 1:
                 self.addLayer(Output(**layer))
+                self.compile()
             else:
                 self.addLayer(Dense(**layer))
+
+    @property
+    def property_dict(self):
+        return {'model_name': self.name, 'momentum': self.momentum, 'learning_rate': self.learning_rate_name, 'layers': ', '.join([str(layer.height) for layer in self.network])}
+
+    @property
+    def learning_rate_name(self):
+        if callable(self.learning_rate):
+            if self.learning_rate.__doc__ is not None:
+                return self.learning_rate.__doc__
+            else:
+                return f"(0) {self.learning_rate(0)}"
+        else:
+            return f"flat {self.learning_rate}"
+
+    @property
+    def parallell_runs(self):
+        return self.network[-1].height
+
 
     def set_learning_rate(self, learning_rate):
         self.learning_rate = learning_rate
@@ -186,7 +220,6 @@ class Network:
                     Input values. Must have same shape as input layer.
         """
         self.network[0].a = input_neurons
-
 
         for i in range(1, len(self.network)):
             self.network[i].feed_forward(self.network[i-1])
@@ -228,9 +261,35 @@ class Network:
             self.network[i].bias += np.mean(self.network[i].d, axis=0) * self.learning_rate
             self.network[i].weights += np.dot(self.network[i - 1].a.T, self.network[i].d) * self.learning_rate
 
-    def update_parameters(self, x):
-        """For compatibility with sgd"""
-        return None
+    def update_parameters(self, x, optimal_output, ytilde):
+        """Propagates the error back through the network, and steps in a direction of less loss.
+        
+        Parameters:
+        -----------
+        x:          for compatibility with sgd
+        optimal_output:
+                    array of floats
+                    Optimal or desired output values. Must have same shape as output layer.
+        y:          for compatibility with sgd
+        """
+
+
+        for i in reversed(range(1, len(self.network))):
+            if i == len(self.network) - 1:
+                backprop_data = np.atleast_2d(optimal_output)
+            else:
+                backprop_data = self.network[i+1]
+
+            self.network[i].back_propagate(backprop_data)
+
+            #self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
+            self.network[i].bias_velocity *= self.momentum
+            self.network[i].bias_velocity += self.learning_rate * np.mean(self.network[i].d, axis=0)
+            self.network[i].bias += self.network[i].bias_velocity
+
+            self.network[i].weights_velocity *= self.momentum
+            self.network[i].weights_velocity += self.learning_rate * np.dot(self.network[i - 1].a.T, self.network[i].d)
+            self.network[i].weights += self.network[i].weights_velocity
 
     def __str__(self):
         """Returns a printable string with all the networks biases and weights.

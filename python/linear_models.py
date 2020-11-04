@@ -65,6 +65,7 @@ class LinearRegression:
         self._lambda = 0
         self.momentum = momentum
         self.beta = beta_initialiser((x_shape, init_conds))
+        self.beta_initialiser = beta_initialiser
         self.velocity = np.zeros_like(self.beta)
         self.step = 0
         self.learning_rate = learning_rate if callable(learning_rate) else lambda step: learning_rate
@@ -163,7 +164,10 @@ class LinearRegression:
 
     @property
     def property_dict(self):
-        return {'model_name': self.name, 'momentum': self.momentum, 'learning_rate': self.learning_rate_name}
+        properties = {'model_name': self.name, 'momentum': self.momentum, 'learning_rate': self.learning_rate_name}
+        if self.beta_initialiser.__doc__ is not None:
+            properties['Init $\\beta$'] = self.beta_initialiser.__doc__
+        return properties
 
     @property
     def parallell_runs(self):

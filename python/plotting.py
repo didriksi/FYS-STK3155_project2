@@ -34,15 +34,24 @@ def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color="C0",
                 Color of confidence interval, C0 gives the next color in normal matplotlib order
     **kwargs:   Passed onwards to plt.fill_between()
     """
-    lower = lower_midddle_upper_y[0]
     if lower_midddle_upper_y.shape[0] == 3:
+        lower = lower_midddle_upper_y[0]
         middle = lower_midddle_upper_y[1]
         upper = lower_midddle_upper_y[2]
         ax.plot(x, middle, color)
-    else:
+        ax.fill_between(x, lower, upper, color=color, alpha=.5, **kwargs)
+    elif lower_midddle_upper_y.shape[0] == 2:
+        lower = lower_midddle_upper_y[0]
         upper = lower_midddle_upper_y[1]
+        ax.fill_between(x, lower, upper, color=color, alpha=.5, **kwargs)
+    else:
+        if lower_midddle_upper_y.shape[0] == 1:
+            middle = y[0]
+        else:
+            middle = y
+        ax.plot(x, middle, color)
     
-    ax.fill_between(x, lower, upper, color=color, alpha=.5, **kwargs)
+    
 
 def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), title="plot", projection=None, **kwargs):
     """Plots two plots with the same x side by side. Can also make an animation of them from different angles.

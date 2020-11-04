@@ -8,18 +8,23 @@ import tune
 import metrics
 import linear_models
 import plotting
+import neural_model
 
-def sgd(model, x, y, epochs=50, mini_batch_size=1, metric=metrics.MSE):
+def sgd(model, x_train, x_test, y_train, y_test, epochs=50, mini_batch_size=1, metric=metrics.MSE):
     """Stochastic gradient descent
 
     Parameters:
     -----------
     model:      object
                 Instance of class with a predict(x) and an update_parameters(x, y, y_tilde) method.
-    x:          array of shape (n, k)
-                Array with data usable by model, with each datapoint being a row.
-    y:          array of shape (n, )
-                Array with target data.
+    x_train:    array of shape (n, k)
+                Array with data usable by model, with each datapoint being a row. Data used to train the model.
+    x_test:     array of shape (n, k)
+                Array with data usable by model, with each datapoint being a row. Used to test the model, and calculate error.
+    y_train:    array of shape (n, )
+                Array with target data used to train the model.
+    y_test:     array of shape (n, )
+                Array with target data used to test the model, and calculate error.
     epochs:     int
                 Number of epochs. 50 by default.
     mini_batch_size:
@@ -35,24 +40,22 @@ def sgd(model, x, y, epochs=50, mini_batch_size=1, metric=metrics.MSE):
     errors:     array
                 Array with initial conditions and epochs
     """
-
-    data_size = x.shape[0]
+    data_size = x_train.shape[0]
     indexes = np.arange(data_size)
-    errors = np.empty((model.parallell_runs, epochs)) # TODO: Change order?
-
+    errors = np.empty((model.parallell_runs, epochs))
+    
     for epoch in range(epochs):
-        
-        errors[:,epoch] = metrics.MSE(model.predict(x), y[:,np.newaxis])
+        errors[:,epoch] = metrics.MSE(model.predict(x_test), np.atleast_2d(y_test))
         
         np.random.shuffle(indexes)
         mini_batches = indexes.reshape(-1, mini_batch_size)
         for mini_batch in mini_batches:
-            y_tilde = model.predict(x[mini_batch])
-            model.update_parameters(x[mini_batch], y[mini_batch], y_tilde)
+            y_tilde = model.predict(x_train[mini_batch])
+            model.update_parameters(x_train[mini_batch], y_train[mini_batch], y_tilde)
 
     return model, errors
 
-def sgd_on_models(x, y, *subplots, **sgd_kwargs):
+def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
     """Does Stochastic Gradient Descent on models with different parameters, and returns errors DataFrame.
 
     The heart of the pipeline make_models->sgd_on_models->plot_sgd_errors, where sgd and plotting.side_by_side
@@ -63,10 +66,14 @@ def sgd_on_models(x, y, *subplots, **sgd_kwargs):
 
     Parameters:
     -----------
-    x:          array of shape (n, k)
-                Array with data useable by model, with each datapoint being a row.
-    y:          array of shape (n, )
-                Array with target data.
+    x_train:    array of shape (n, k)
+                Array with data usable by model, with each datapoint being a row. Data used to train the model.
+    x_test:     array of shape (n, k)
+                Array with data usable by model, with each datapoint being a row. Used to test the model, and calculate error.
+    y_train:    array of shape (n, )
+                Array with target data used to train the model.
+    y_test:     array of shape (n, )
+                Array with target data used to test the model, and calculate error.
     *subplots:  (models, sgd kwargs)
                 Each tuples first element is a list of models to be tested together, while the second is kwargs passed to sgd().
                 The results is plotted as a subplot.
@@ -83,7 +90,6 @@ def sgd_on_models(x, y, *subplots, **sgd_kwargs):
     subplots:   list of (models, sgd kwargs)
                 The same as input subplots, just with all models trained.
     """
-
     default_sgd_kwargs = {'epochs': 100}
     default_sgd_kwargs.update(sgd_kwargs)
 
@@ -109,7 +115,7 @@ def sgd_on_models(x, y, *subplots, **sgd_kwargs):
             step += 1
             print(f"\r |{'='*(step*50//end_step)}{' '*(50-step*50//end_step)} | {step/end_step:.2%}", end="", flush=True)
 
-            model, errors[i,j] = sgd(model, x, y, **sgd_kwargs)
+            model, errors[i,j] = sgd(model, x_train, x_test, y_train, y_test, **sgd_kwargs)
 
 
         # Make dictionaries and eventually strings describing the unique aspects of each subplot and subsubplot
@@ -276,15 +282,18 @@ def make_models(model_class, common_kwargs, subplot_uniques, subplot_copies, sub
             models.append(subplot_models)
     return models
 
-
-
 if __name__ == '__main__':
     def conf_interval_plot(data):
         polynomials = 8
         X_train = tune.poly_design_matrix(polynomials, data['x_train'])
+        X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
+
+        def beta_initialiser(shape):
+            """10*stdn"""
+            return 10*np.random.randn(*shape)
         
-        common_ols_kwargs = {'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
-        common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
+        common_ols_kwargs = {'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
+        common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
         subplot_ols_uniques = [{}]
         subplot_ridge_uniques = [{'_lambda': 0.01}, {'_lambda': 0.001}]
         subsubplot_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-3, -1, 3)]
@@ -307,7 +316,7 @@ if __name__ == '__main__':
             )
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ols_models + ridge_models, unique_sgd_kwargs*3)]
-        errors, subtitle, subplots = sgd_on_models(X_train, data['y_train'], *subplots, epochs=150)
+        errors, subtitle, subplots = sgd_on_models(X_train, X_validate, data['y_train'], data['y_validate'], *subplots, epochs=300)
 
         title = ['Confidence interval for different learning rates and mini-batch sizes', 'conf_interval', subtitle]
         plot_sgd_errors(errors, title)
@@ -315,10 +324,15 @@ if __name__ == '__main__':
     def beta_variance(data):
         polynomials = 8
         X_train = tune.poly_design_matrix(polynomials, data['x_train'])
+        X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
+
+        def beta_initialiser(shape):
+            """10*stdn"""
+            return 10*np.random.randn(*shape)
         
-        common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 10, 'x_shape': X_train.shape[1]}
+        common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
         subplot_ridge_uniques = [{'_lambda': 0.01}, {'_lambda': 0.001}]
-        subsubplot_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-2, -1, 3)]
+        subsubplot_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-2, -1.5, 3)]
 
         unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size} for mini_batch_size in [10, 20, 40]]
 
@@ -331,13 +345,13 @@ if __name__ == '__main__':
             )
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ridge_models, unique_sgd_kwargs*2)]
-        errors, subtitle, subplots = sgd_on_models(X_train, data['y_train'], *subplots, epochs=2000)
+        errors, subtitle, subplots = sgd_on_models(X_train, X_validate, data['y_train'], data['y_validate'], *subplots, epochs=4000)
 
         title = ['Convergence test', 'convergence', subtitle]
         plot_sgd_errors(errors, title)
 
         models = [model for models, _ in subplots for model in models]
-        sgd_betas = np.array([model.beta for model in models]) # This needs to take in the different beta values, but now makes an array of some other dtype perhaps
+        sgd_betas = np.array([model.beta for model in models])
 
         optimal_betas = np.array([model.fit(X_train, data['y_train']) for model in models ])
         sgd_beta_intervals = np.array([np.min(sgd_betas, axis=(0,2)), np.mean(sgd_betas, axis=(0,2)), np.max(sgd_betas, axis=(0,2))])
@@ -355,9 +369,8 @@ if __name__ == '__main__':
     def momemtun_plot(data):
         polynomials = 8
         X_train = tune.poly_design_matrix(polynomials, data['x_train'])
+        X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
 
-        
-        
         common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
         subplot_ridge_uniques = [{'momentum': 0.9}, {'momentum': 0.6}, {'momentum': 0.3}, {'momentum': 0.}]
         subsubplot_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-3, -1, 3)]
@@ -374,26 +387,74 @@ if __name__ == '__main__':
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ridge_models, unique_sgd_kwargs*len(ridge_models))]
 
-        errors, subtitle, subplots = sgd_on_models(X_train, data['y_train'], *subplots, epochs=150)
+        errors, subtitle, subplots = sgd_on_models(X_train, X_validate, data['y_train'], data['y_validate'], *subplots, epochs=300)
 
         title = ['Confidence interval for different momentums and learning rates', 'momentum', subtitle]
 
         plot_sgd_errors(errors, title)
 
-    def neural_plot(data):
-        pass
+    def neural_regression(data):
+        common_kwargs = {}
+        subplot_uniques = [{'layers': [{'height': 2}, {'height': hidden}, {'height': 1}]} for hidden in range(5,20,2)]
+        subsubplot_uniques = [{'learning_rate': learning_rate, 'momentum': momentum} for learning_rate in np.logspace(-4, -1, 4) for momentum in [0., 0.4]]
+
+        unique_sgd_kwargs = [{'mini_batch_size': 20}]
+
+        neural_models = make_models(
+            neural_model.Network,
+            common_kwargs,
+            subplot_uniques,
+            len(unique_sgd_kwargs),
+            subsubplot_uniques
+            )
+
+        subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(neural_models, unique_sgd_kwargs*len(neural_models))]
+
+        errors, subtitle, subplots = sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=2000)
+
+        title = ['Neural model, Regression test', 'neural_regression', subtitle]
+
+        plot_sgd_errors(errors, title)
+
+    def neural_classification(data):
+        common_kwargs = {}
+        subplot_uniques = [{'layers': [{'height': 64}, {'height': hidden}, {'height': 10}]} for hidden in range(5,20,2)]
+        subsubplot_uniques = [{'learning_rate': learning_rate, 'momentum': momentum} for learning_rate in np.logspace(-4, -1, 4) for momentum in [0., 0.4]]
+
+        unique_sgd_kwargs = [{'mini_batch_size': 10}]
+
+        neural_models = make_models(
+            neural_model.Network,
+            common_kwargs,
+            subplot_uniques,
+            len(unique_sgd_kwargs),
+            subsubplot_uniques
+            )
+
+        subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(neural_models, unique_sgd_kwargs*len(neural_models))]
+
+        errors, subtitle, subplots = sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=200)
+
+        title = ['Neural model, Classification test', 'neural_classification', subtitle]
+
+        plot_sgd_errors(errors, title)
 
     import real_terrain
-    data = real_terrain.get_data(20)
+    import mnist
+
+    terrainData = real_terrain.get_data(20)
+    mnistData = mnist.get_data(0.8, 0.2)
 
     if 'conf' in sys.argv:
-        conf_interval_plot(data)
+        conf_interval_plot(terrainData)
     if 'momentum' in sys.argv:
-        momemtun_plot(data)
-    if 'neural' in sys.argv:
-        neural_plot(data)
+        momemtun_plot(terrainData)
+    if 'neural' in sys.argv and 'reg' in sys.argv:
+        neural_regression(terrainData)
+    if 'neural' in sys.argv and 'class' in sys.argv:
+        neural_classification(mnistData)
     if 'betas' in sys.argv:
-        beta_variance(data)
+        beta_variance(terrainData)
 
 
 

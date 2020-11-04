@@ -78,5 +78,4 @@ def make_data_dict(y, *selection_parameter, random=False):
         data['x_train_validate'] = data['x_train_validate'].astype(float)/400
         data['x_validate'] = data['x_validate'].astype(float)/400
         data['x_test'] = data['x_test'].astype(float)/400
-
     return data
