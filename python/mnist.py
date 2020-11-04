@@ -43,6 +43,7 @@ def get_data(train_size, test_size, even=True, truncate=False):
         raise NotImplementedError("Haven't implemented option to truncate yet.")
 
     mnist_x, mnist_y = load_digits(return_X_y=True)
+    mnist_x /= np.max(mnist_x)
 
     data = {}
 
@@ -78,6 +79,7 @@ def get_data(train_size, test_size, even=True, truncate=False):
         shuffled_training_indexes = np.random.permutation(training_samples*10)
         shuffled_validation_indexes = np.random.permutation((training_validation_samples-training_samples)*10)
         shuffled_test_indexes = np.random.permutation(testing_samples*10)
+
         data['x_train'] = np.concatenate(x_train)[shuffled_training_indexes]
         data['x_validate'] = np.concatenate(x_validate)[shuffled_validation_indexes]
         data['x_test'] = np.concatenate(x_test)[shuffled_test_indexes]
@@ -93,8 +95,6 @@ def get_data(train_size, test_size, even=True, truncate=False):
 
     data['x'] = np.concatenate((data['x_train'], data['x_validate'], data['x_test']), axis=0)
     data['y'] = np.concatenate((data['y_train'], data['y_validate'], data['y_test']), axis=0)
-
-    print(data['y_train'].shape)
 
     return data
 

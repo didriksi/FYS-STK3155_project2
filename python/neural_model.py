@@ -2,6 +2,7 @@ import numpy as np
 
 def sigmoid(z):
     return 1/(1 + np.exp(-z))
+    #return np.exp(z)/(1 + np.exp(z))
 
 def sigmoid_diff(z):
     return sigmoid(z)*(1-sigmoid(z))
@@ -20,20 +21,21 @@ def linear_diff(z):
     return np.ones(z.shape)
 
 def softmax(z):
-    e_z = np.exp(z)
-    return e_z/np.sum(e_z)
+    e_z = np.exp(z - np.max(z))
+    return e_z / np.sum(e_z)
+    # e_z = np.exp(z)
+    # return e_z/np.sum(e_z)
 
 def softmax_diff(z):
-    z = z.reshape(-1,1)
-    return np.diagflat(z) - np.dot(z, z.T)
+    grad = np.diag(z) - np.dot(z, z.T)
+    #print(f"{np.sum(np.abs(grad)):20.5}  {np.sum(np.abs(z)):20.5}")
+    return grad
 
 def cost(actualOutput, optimal_output):
     return np.square(optimal_output - actualOutput)
 
 def cost_diff(actualOutput, optimal_output):
     return 2 * (optimal_output - actualOutput)
-
-
 
 class Layer:
     """Generic layer in neural network.
@@ -93,7 +95,16 @@ class Dense(Layer):
         self.a = self.activation(self.z)
 
     def back_propagate(self, nextLayer):
+        #if np.any(np.isnan(np.dot(nextLayer.weights, nextLayer.d.T))):
+        #print("\n\nback_propagate")
+        #print(np.dot(nextLayer.weights, nextLayer.d.T))
+        #print(nextLayer.weights)
+        #print(nextLayer.d.T)
+        #print(self.diff_activation(self.z))
+        #print(self.z)
+        #print(self.z, self.diff_activation(self.z))
         self.d = np.dot(nextLayer.weights, nextLayer.d.T).T * self.diff_activation(self.z)
+        #print(self.d)
 
     def set_prevLayer(self, prevLayerHeight):
         """Initialise weights and biases after making the layer before it.
@@ -104,8 +115,8 @@ class Dense(Layer):
                     int
                     Number of neurons in previous layer.
         """
-        self.weights = np.random.normal(0, 1, (prevLayerHeight, self.height))
-        self.bias = np.random.normal(0, 1, self.height)
+        self.weights = np.random.normal(0, 1/self.height, (prevLayerHeight, self.height))
+        self.bias = np.random.normal(0, 1/self.height, self.height)
 
         self.weights_velocity = np.zeros_like(self.weights)
         self.bias_velocity = np.zeros_like(self.bias)
@@ -137,7 +148,7 @@ class Output(Dense):
         optimal:    array of floats
                     Optimal output.
         """
-
+        #print(self.a.shape, optimal.shape, self.z.shape)
         self.d = self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
 
 
@@ -170,7 +181,7 @@ class Network:
 
     @property
     def property_dict(self):
-        return {'model_name': self.name, 'momentum': self.momentum, 'learning_rate': self.learning_rate_name, 'layers': ', '.join([str(layer.height) for layer in self.network])}
+        return {'model_name': self.name, 'momentum': self.momentum, 'learning_rate': self.learning_rate_name, 'layers': ', '.join([str(layer.height) for layer in self.network[1:]])}
 
     @property
     def learning_rate_name(self):
@@ -284,6 +295,7 @@ class Network:
 
             #self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
             self.network[i].bias_velocity *= self.momentum
+            #print(i, self.network[i].bias_velocity.shape, self.network[i].d.shape)
             self.network[i].bias_velocity += self.learning_rate * np.mean(self.network[i].d, axis=0)
             self.network[i].bias += self.network[i].bias_velocity
 

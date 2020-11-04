@@ -43,9 +43,9 @@ def sgd(model, x_train, x_test, y_train, y_test, epochs=50, mini_batch_size=1, m
     data_size = x_train.shape[0]
     indexes = np.arange(data_size)
     errors = np.empty((model.parallell_runs, epochs))
-    
+
     for epoch in range(epochs):
-        errors[:,epoch] = metrics.MSE(model.predict(x_test), np.atleast_2d(y_test))
+        errors[:,epoch] = metrics.MSE(model.predict(x_test), y_test)
         
         np.random.shuffle(indexes)
         mini_batches = indexes.reshape(-1, mini_batch_size)
@@ -90,6 +90,7 @@ def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
     subplots:   list of (models, sgd kwargs)
                 The same as input subplots, just with all models trained.
     """
+    
     default_sgd_kwargs = {'epochs': 100}
     default_sgd_kwargs.update(sgd_kwargs)
 
@@ -97,6 +98,9 @@ def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
 
     step = 0
     end_step = len([model for (models, _) in subplots for model in models])
+
+    y_test = y_test if y_test.ndim == 2 else y_test[:,np.newaxis]
+    y_train = y_train if y_train.ndim == 2 else y_train[:,np.newaxis]
 
     labels_list = []
     title_dicts = []
@@ -113,7 +117,7 @@ def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
             subplot_labels.append(subplot_dict)
 
             step += 1
-            print(f"\r |{'='*(step*50//end_step)}{' '*(50-step*50//end_step)} | {step/end_step:.2%}", end="", flush=True)
+            print(f"\r |{'='*(step*50//end_step)}{' '*(50-step*50//end_step)}| {step/end_step:.2%}", end="", flush=True)
 
             model, errors[i,j] = sgd(model, x_train, x_test, y_train, y_test, **sgd_kwargs)
 
@@ -417,9 +421,12 @@ if __name__ == '__main__':
         plot_sgd_errors(errors, title)
 
     def neural_classification(data):
-        common_kwargs = {}
-        subplot_uniques = [{'layers': [{'height': 64}, {'height': hidden}, {'height': 10}]} for hidden in range(5,20,2)]
-        subsubplot_uniques = [{'learning_rate': learning_rate, 'momentum': momentum} for learning_rate in np.logspace(-4, -1, 4) for momentum in [0., 0.4]]
+        common_kwargs = {'momentum': 0.3}
+        subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10}]}, {'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10}]}] # , 'activation': neural_model.softmax, 'diff_activation': neural_model.softmax_diff
+        #subplot_uniques = [{'layers': [{'height': 64}, {'height': hidden}, {'height': 10}]} for hidden in np.power(2, np.arange(4,7))] # , 'activation': neural_model.softmax, 'diff_activation': neural_model.softmax_diff
+        #subsubplot_uniques = [{}]
+        subsubplot_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-3, -1, 3)]
+        #subsubplot_uniques = [{'learning_rate': learning_rate, 'momentum': momentum} for learning_rate in np.logspace(-10, -6, 2) for momentum in [0., 0.4]]
 
         unique_sgd_kwargs = [{'mini_batch_size': 10}]
 
@@ -433,7 +440,7 @@ if __name__ == '__main__':
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(neural_models, unique_sgd_kwargs*len(neural_models))]
 
-        errors, subtitle, subplots = sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=200)
+        errors, subtitle, subplots = sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=600)
 
         title = ['Neural model, Classification test', 'neural_classification', subtitle]
 
@@ -443,7 +450,7 @@ if __name__ == '__main__':
     import mnist
 
     terrainData = real_terrain.get_data(20)
-    mnistData = mnist.get_data(0.8, 0.2)
+    mnistData = mnist.get_data(0.6, 0.2)
 
     if 'conf' in sys.argv:
         conf_interval_plot(terrainData)
