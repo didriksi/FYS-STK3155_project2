@@ -357,9 +357,9 @@ if __name__ == '__main__':
         models = [model for models, _ in subplots for model in models]
         sgd_betas = np.array([model.beta for model in models])
 
-        sgd_errors = np.mean([metrics.MSE(model.predict(X_validate), data['y_validate'][:,np.newaxis]) for model in models])
+        sgd_errors = np.mean([metrics.MSE(model.predict(X_validate), data['y_validate']) for model in models])
         optimal_betas = np.array([model.fit(X_train, data['y_train']) for model in models])
-        optimal_errors = np.mean([metrics.MSE(model.predict(X_validate), data['y_validate'][:,np.newaxis]) for model in models])
+        optimal_errors = np.mean([metrics.MSE(model.predict(X_validate), data['y_validate']) for model in models])
         print(f"Mean SGD MSE after convergence: {sgd_errors}. Analytical MSE: {optimal_errors}")
         sgd_beta_intervals = np.array([np.min(sgd_betas, axis=(0,2)), np.mean(sgd_betas, axis=(0,2)), np.max(sgd_betas, axis=(0,2))])
         optimal_beta_intervals = np.array([np.min(optimal_betas, axis=0), np.mean(optimal_betas, axis=0), np.max(optimal_betas, axis=0)])
@@ -369,7 +369,7 @@ if __name__ == '__main__':
             'axis_labels': ('Beta parameter #', 'Values'),
             'title': ['Beta parameters', 'beta'],
         }
-        plot = ['', np.arange(sgd_beta_intervals.shape[1]), [[sgd_beta_intervals, {'label': 'SGD', 'color': 'C0'}], [optimal_beta_intervals, {'label': 'Analytical', 'color': 'C1'}]]]
+        plot = ['', np.arange(sgd_beta_intervals.shape[1]), [[sgd_beta_intervals[0], {'label': 'SGD', 'color': 'C0'}], [optimal_beta_intervals[0], {'label': 'Analytical', 'color': 'C1'}]]]
         plotting.side_by_side(plot, **side_by_side_parameters)
 
 

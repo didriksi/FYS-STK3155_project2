@@ -50,13 +50,13 @@ def make_data_dict(y, *selection_parameter, random=False):
         x1, x2 = np.meshgrid(np.arange(0, data['y'].shape[0], x_sparsity, dtype=int), np.arange(0, data['y'].shape[1], x_sparsity, dtype=int))
         data['x_train'] = np.array([x1, x2]).T.reshape(-1, 2)
         data['train_m'] = np.s_[:data['x_train'].shape[0]]
-        data['y_train'] = data['y'][data['x_train'][:,0],data['x_train'][:,1]]
+        data['y_train'] = data['y'][data['x_train'][:,0],data['x_train'][:,1]][:,np.newaxis]
 
         # Validation data
         x1, x2 = np.meshgrid(np.arange(x_sparsity//2, data['y'].shape[0], x_sparsity, dtype=int), np.arange(x_sparsity//2, data['y'].shape[1], x_sparsity, dtype=int))
         data['x_validate'] = np.array([x1, x2]).T.reshape(-1, 2)
         data['validate_m'] = np.s_[data['x_train'].shape[0]:data['x_train'].shape[0]+data['x_validate'].shape[0]]
-        data['y_validate'] = data['y'][data['x_validate'][:,0],data['x_validate'][:,1]]  
+        data['y_validate'] = data['y'][data['x_validate'][:,0],data['x_validate'][:,1]][:,np.newaxis]  
 
         # Complete x
         x1, x2 = np.meshgrid(np.arange(0, data['y'].shape[0], dtype=int), np.arange(0, data['y'].shape[1], dtype=int))
@@ -69,10 +69,10 @@ def make_data_dict(y, *selection_parameter, random=False):
         return_counts_for_complete_and_mask = np.unique(np.append(data['x'], np.array(np.nonzero(test)).T, axis=0), axis=0, return_counts=True)[1]
         data['test_m'] = np.s_[np.array([return_counts_for_complete_and_mask[:data['x'].shape[0]] - 1], dtype=bool).T[:,0]]
         data['x_test'] = data['x'][data['test_m']]
-        data['y_test'] = data['y'][data['x_test'][:,0],data['x_test'][:,1]]
+        data['y_test'] = data['y'][data['x_test'][:,0],data['x_test'][:,1]][:,np.newaxis]
 
         data['x_train_validate'] = np.append(data['x_train'], data['x_validate'], axis=0)
-        data['y_train_validate'] = data['y'][data['x_train_validate'][:,0],data['x_train_validate'][:,1]]
+        data['y_train_validate'] = data['y'][data['x_train_validate'][:,0],data['x_train_validate'][:,1]][:,np.newaxis]
 
         data['x_train'] = data['x_train'].astype(float)/400
         data['x_train_validate'] = data['x_train_validate'].astype(float)/400
