@@ -144,7 +144,7 @@ class LinearRegression:
                     Differentiated MSE.
 
         """
-        return np.dot(X.T, 2/X.shape[0]*(y_tilde - y[:,np.newaxis])) + 2*self._lambda*self.beta
+        return np.dot(X.T, 2/X.shape[0]*(y_tilde - y)) + 2*self._lambda*self.beta
 
     def update_parameters(self, X, y, y_tilde):
         """Performs one step of gradient descent.

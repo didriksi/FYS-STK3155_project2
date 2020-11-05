@@ -75,13 +75,13 @@ def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), ti
     """
 
     if len(plots) <= 3:
-        fig = plt.figure(figsize=(len(plots)*5, 8))
+        fig = plt.figure(figsize=(4+len(plots)*4, 8))
         subplot_shape = (1, len(plots))
     elif len(plots) <= 8:
-        fig = plt.figure(figsize=(len(plots)*3, 15))
+        fig = plt.figure(figsize=(4+len(plots)*4, 15))
         subplot_shape = (2, int(len(plots)/2))
     elif len(plots) == 9:
-        fig = plt.figure(figsize=(15, len(plots)*2))
+        fig = plt.figure(figsize=(18, 15))
         subplot_shape = (3, int(len(plots)/3))
 
     fig.suptitle(title[0] if isinstance(title, list) else title, y = 0.96, fontsize=22)
