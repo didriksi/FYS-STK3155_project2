@@ -42,7 +42,7 @@ def sgd(model, x_train, x_test, y_train, y_test, epochs=50, mini_batch_size=1, m
     """
     data_size = x_train.shape[0]
     indexes = np.arange(data_size)
-    errors = np.empty((model.parallell_runs, epochs))
+    errors = np.zeros((model.parallell_runs, epochs))
 
     for epoch in range(epochs):
         errors[:,epoch] = metrics.MSE(model.predict(x_test), y_test)
@@ -53,6 +53,7 @@ def sgd(model, x_train, x_test, y_train, y_test, epochs=50, mini_batch_size=1, m
             y_tilde = model.predict(x_train[mini_batch])
             model.update_parameters(x_train[mini_batch], y_train[mini_batch], y_tilde)
 
+        #TODO: Early stopping
     return model, errors
 
 def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
@@ -356,21 +357,16 @@ if __name__ == '__main__':
 
         models = [model for models, _ in subplots for model in models]
         sgd_betas = np.array([model.beta for model in models])
+        sgd_betas = sgd_betas.transpose(1, 2, 0).reshape((sgd_betas.shape[0], -1)).T
+        optimal_betas = np.array([model.fit(X_train, data['y_train']) for model in models])[:,:,0]
 
-        sgd_errors = np.mean([metrics.MSE(model.predict(X_validate), data['y_validate']) for model in models])
-        optimal_betas = np.array([model.fit(X_train, data['y_train']) for model in models])
-        optimal_errors = np.mean([metrics.MSE(model.predict(X_validate), data['y_validate']) for model in models])
-        print(f"Mean SGD MSE after convergence: {sgd_errors}. Analytical MSE: {optimal_errors}")
-        sgd_beta_intervals = np.array([np.min(sgd_betas, axis=(0,2)), np.mean(sgd_betas, axis=(0,2)), np.max(sgd_betas, axis=(0,2))])
-        optimal_beta_intervals = np.array([np.min(optimal_betas, axis=0), np.mean(optimal_betas, axis=0), np.max(optimal_betas, axis=0)])
-
+        plots = [['SGD', np.arange(sgd_betas.shape[0]), [[sgd_betas, {'notch': True, 'sym': ''}]]], ['Analytical', np.arange(sgd_betas.shape[0]), [[optimal_betas, {'notch': True, 'sym': ''}]]]]
         side_by_side_parameters = {
-            'plotter': plotting.confidence_interval_plotter,
+            'plotter': plotting.box_plotter,
             'axis_labels': ('Beta parameter #', 'Values'),
             'title': ['Beta parameters', 'beta'],
         }
-        plot = ['', np.arange(sgd_beta_intervals.shape[1]), [[sgd_beta_intervals[0], {'label': 'SGD', 'color': 'C0'}], [optimal_beta_intervals[0], {'label': 'Analytical', 'color': 'C1'}]]]
-        plotting.side_by_side(plot, **side_by_side_parameters)
+        plotting.side_by_side(*plots, **side_by_side_parameters)
 
 
     def momemtun_plot(data):

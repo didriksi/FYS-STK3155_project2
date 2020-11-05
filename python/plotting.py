@@ -11,7 +11,6 @@ plt.style.use('ggplot')
 simple_plotter = lambda ax, x, y, *args, **kwargs: ax.plot(x, y, *args, **kwargs)
 
 def trisurface_plotter(ax, x, y, *args, **kwargs):
-    print(x[:,0].shape, x[:,1].shape, y.shape, 'args', *args, 'kwargs', **kwargs)
     ax.plot_trisurf(x[:,0], x[:,1], y, *args, cmap=cm.coolwarm, linewidth=0, antialiased=False, **kwargs)
 
 def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color="C0", **kwargs):
@@ -51,8 +50,12 @@ def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color="C0",
         else:
             middle = lower_midddle_upper_y
         ax.plot(x, middle, color)
-    
-    
+
+def box_plotter(ax, x, y, *args, **kwargs):
+    ax.boxplot(y, *args, **kwargs)
+
+def scatter_plotter(ax, x, y, *args, **kwargs):
+    ax.scatter(x, y, *args, **kwargs)
 
 def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), title="plot", projection=None, **kwargs):
     """Plots two plots with the same x side by side. Can also make an animation of them from different angles.
@@ -89,7 +92,6 @@ def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), ti
     if isinstance(title, list) and len(title) == 3:
         fig.text(0.02, 0.02, (title[2] if isinstance(title, list) else title), fontsize=14)
         
-
     y0 = plots[0][2]
     if isinstance(y0, list):
         ylim = (np.min(y0[0][0]), np.max(y0[0][0]))
