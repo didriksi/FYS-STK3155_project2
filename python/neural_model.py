@@ -248,7 +248,7 @@ class Network:
         self.feed_forward(x)
         return self.network[-1].a
 
-    def gradient(self, x, optimal_output, ytilde):
+    def get_gradient(self, x, optimal_output, ytilde):
         """Propagates the error back through the network, and steps in a direction of less loss.
         
         Parameters:
@@ -284,6 +284,7 @@ class Network:
         y:          for compatibility with sgd
         """
 
+        gradient_norm = 0
 
         for i in reversed(range(1, len(self.network))):
             if i == len(self.network) - 1:
@@ -302,6 +303,10 @@ class Network:
             self.network[i].weights_velocity *= self.momentum
             self.network[i].weights_velocity += self.learning_rate * np.dot(self.network[i - 1].a.T, self.network[i].d)
             self.network[i].weights += self.network[i].weights_velocity
+
+            gradient_norm += self.network[i].bias_velocity + self.network[i].weights_velocity
+
+        return gradient_norm
 
     def __str__(self):
         """Returns a printable string with all the networks biases and weights.
