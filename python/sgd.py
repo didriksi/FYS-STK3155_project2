@@ -518,13 +518,6 @@ if __name__ == '__main__':
     if 'betas' in sys.argv:
         beta_variance(terrainData)
 
-    le = learning_rate_adaptation(0.2, 0.001)
-    def test():
-        """test_doc"""
-        return 0
-    print(le.__doc__)
-    print(test.__doc__)
-
 
 
 
