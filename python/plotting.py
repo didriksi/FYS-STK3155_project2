@@ -52,7 +52,7 @@ def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color="C0",
 
 def box_plotter(ax, x, y, *args, **kwargs):
     ax.boxplot(y, *args, **kwargs)
-    ax.set_xticks(x[::len(x)//10])
+    ax.set_xticks([]) #x[::len(x)//10])
 
 def scatter_plotter(ax, x, y, *args, **kwargs):
     ax.scatter(x, y, *args, **kwargs)
