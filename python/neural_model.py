@@ -165,10 +165,11 @@ class Network:
     """
     def __init__(self, layers=[], name="Neural", momentum=0, learning_rate=0.006):
         self.name = name
-        self.learning_rate = learning_rate
+        self.learning_rate = learning_rate if callable(learning_rate) else lambda step: learning_rate
         self.network = []
         self.theta = np.array([], dtype=object)
         self.momentum = momentum
+        self.step = 0
 
         for i, layer in enumerate(layers):
             if i == 0:
@@ -284,8 +285,6 @@ class Network:
         y:          for compatibility with sgd
         """
 
-        gradient_norm = 0
-
         for i in reversed(range(1, len(self.network))):
             if i == len(self.network) - 1:
                 backprop_data = np.atleast_2d(optimal_output)
@@ -297,16 +296,14 @@ class Network:
             #self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
             self.network[i].bias_velocity *= self.momentum
             #print(i, self.network[i].bias_velocity.shape, self.network[i].d.shape)
-            self.network[i].bias_velocity += self.learning_rate * np.mean(self.network[i].d, axis=0)
+            self.network[i].bias_velocity += self.learning_rate(self.step) * np.mean(self.network[i].d, axis=0)
             self.network[i].bias += self.network[i].bias_velocity
 
             self.network[i].weights_velocity *= self.momentum
-            self.network[i].weights_velocity += self.learning_rate * np.dot(self.network[i - 1].a.T, self.network[i].d)
+            self.network[i].weights_velocity += self.learning_rate(self.step) * np.dot(self.network[i - 1].a.T, self.network[i].d)
             self.network[i].weights += self.network[i].weights_velocity
 
-            gradient_norm += self.network[i].bias_velocity + self.network[i].weights_velocity
-
-        return gradient_norm
+        self.step += 1
 
     def __str__(self):
         """Returns a printable string with all the networks biases and weights.
