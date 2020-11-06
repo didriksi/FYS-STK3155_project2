@@ -46,14 +46,14 @@ def sgd(model, x_train, x_test, y_train, y_test, epochs=200, epochs_without_prog
 
     for epoch in range(epochs):
         errors[:,epoch] = metric(model.predict(x_test), y_test)
-        if epoch%epochs_without_progress == 0 and epoch >= epochs_without_progress:
+        if epoch % epochs_without_progress == 0 and epoch >= epochs_without_progress:
             if epoch == epochs_without_progress:
                 prev_error = np.mean(errors[:,epoch-epochs_without_progress:epoch])
             else:
                 current_error = np.mean(errors[:,epoch-epochs_without_progress:epoch])
                 if current_error > prev_error:
                     errors[:,epoch:] = errors[:,[epoch]]
-                    print("breaking at epoch", epoch)
+                    print(" -> Breaking at epoch", epoch)
                     break
                 prev_error = current_error
 
@@ -130,7 +130,6 @@ def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
             print(f"\r |{'='*(step*50//end_step)}{' '*(50-step*50//end_step)}| {step/end_step:.2%}", end="", flush=True)
 
             model, errors[i,j] = sgd(model, x_train, x_test, y_train, y_test, **sgd_kwargs)
-
 
         # Make dictionaries and eventually strings describing the unique aspects of each subplot and subsubplot
         filtered_labels_dicts, title_dict = filter_dicts(subplot_labels)
@@ -239,14 +238,13 @@ def plot_sgd_errors(sgd_errors_df, title):
             max_errors = label_errors.max(axis=0).to_numpy()[np.newaxis,:]
             best_index = label_errors.iloc[slice(None), -1].idxmin()
             best_errors = label_errors.loc(axis=0)[slice(None), slice(None), best_index].to_numpy()
-
             y_ = np.concatenate((min_errors, best_errors, max_errors), axis=0)
             y.append((y_, {'color': 'C'+str(j+1)}))
 
-            learning_rate_enums = np.arange(len(labels))
-            colors = [f"C{number}" for number in learning_rate_enums + 1]
+            label_enum = np.arange(len(labels))
+            colors = [f"C{number}" for number in label_enum + 1]
             handler_map = {i: plotting.LegendObject(colors[i]) for i in range(len(colors))}
-            legend = [learning_rate_enums, labels], {'handler_map': handler_map}
+            legend = [label_enum, labels], {'handler_map': handler_map}
         
         plots.append([subplot_name, subplot_errors.columns, y, legend])
 
@@ -296,21 +294,30 @@ def make_models(model_class, common_kwargs, subplot_uniques, subplot_copies, sub
             models.append(subplot_models)
     return models
 
+
 if __name__ == '__main__':
+    def beta_initialiser(shape):
+        """3*stdn"""
+        return 3*np.random.randn(*shape)
+
+    def learning_rate_adaptation(base_learning_rate, step_factor):
+        def learning_rate(step):
+            f"""{base_learning_rate}/(1+step*{step_factor})"""
+            return base_learning_rate/(1+step*step_factor)
+        return learning_rate
+
     def conf_interval_plot(data):
         polynomials = 8
         X_train = tune.poly_design_matrix(polynomials, data['x_train'])
         X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
 
-        def beta_initialiser(shape):
-            """10*stdn"""
-            return 10*np.random.randn(*shape)
+        
         
         common_ols_kwargs = {'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
         common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
         subplot_ols_uniques = [{}]
         subplot_ridge_uniques = [{'_lambda': 0.01}, {'_lambda': 0.001}]
-        subsubplot_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-3, -1, 3)]
+        subsubplot_linear_uniques = [{'learning_rate': learning_rate_adaptation(base_learning_rate, 1/400000)} for base_learning_rate in np.logspace(-3, -1, 3)]
 
         unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size} for mini_batch_size in [10, 20, 40]]
 
@@ -339,45 +346,58 @@ if __name__ == '__main__':
         polynomials = 8
         X_train = tune.poly_design_matrix(polynomials, data['x_train'])
         X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
-
-        def beta_initialiser(shape):
-            """10*stdn"""
-            return 10*np.random.randn(*shape)
         
         common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 100, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
         subplot_ridge_uniques = [{'_lambda': 0.01}]
-        subsubplot_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-2, -1.5, 3)]
+        subsubplot_ridge_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-2, -1.5, 3)]
 
-        unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size} for mini_batch_size in [10, 20, 40]]
+        common_ols_kwargs = {'momentum': 0.5, 'init_conds': 100, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
+        subsubplot_ols_linear_uniques = [{'learning_rate': learning_rate_adaptation(base_learning_rate, 1/300000)} for base_learning_rate in np.logspace(-1, -0.9, 3)]
+
+        unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size} for mini_batch_size in [10, 20]]
 
         ridge_models = make_models(
             linear_models.RegularisedLinearRegression,
             common_ridge_kwargs,
             subplot_ridge_uniques,
             len(unique_sgd_kwargs),
-            subsubplot_linear_uniques
+            subsubplot_ridge_linear_uniques
             )
 
-        subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ridge_models, unique_sgd_kwargs*2)]
-        errors, subtitle, subplots = sgd_on_models(X_train, X_validate, data['y_train'], data['y_validate'], *subplots, epochs=20000)
+        ols_models = make_models(
+            linear_models.LinearRegression,
+            common_ols_kwargs,
+            [{}],
+            len(unique_sgd_kwargs),
+            subsubplot_ols_linear_uniques
+            )
+
+        subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ridge_models + ols_models, unique_sgd_kwargs*(len(ridge_models) + len(ols_models)))]
+        errors, subtitle, subplots = sgd_on_models(X_train, X_validate, data['y_train'], data['y_validate'], *subplots, epochs=20000, epochs_without_progress=200)
 
         title = ['Convergence test', 'convergence', subtitle]
         plot_sgd_errors(errors, title)
 
-        models = [model for models, _ in subplots for model in models]
-        sgd_betas = np.array([model.beta for model in models])
-        sgd_betas = sgd_betas.transpose(1, 2, 0).reshape((sgd_betas.shape[1], -1)).T
+        sgd_ridge_betas = np.array([model.beta for models in ridge_models for model in models])
+        sgd_ridge_betas = sgd_ridge_betas.transpose(1, 2, 0).reshape((sgd_ridge_betas.shape[1], -1)).T
 
-        optimal_models = [linear_models.RegularisedLinearRegression("Ridge", linear_models.beta_ridge, _lambda=_lambda) for _lambda in (0.01, )]
+        sgd_ols_betas = np.array([model.beta for models in ols_models for model in models])
+        sgd_ols_betas = sgd_ols_betas.transpose(1, 2, 0).reshape((sgd_ols_betas.shape[1], -1)).T
+
+        optimal_models = [linear_models.RegularisedLinearRegression("Ridge", linear_models.beta_ridge, _lambda=_lambda) for _lambda in (0.01, 0.)]
         optimal_betas = np.array([model.fit(X_train, data['y_train']) for model in optimal_models])[:,:,0]
 
         plots = [
-            ['', np.arange(1, optimal_betas.shape[1] + 1),
-                [[sgd_betas, {'notch': False, 'sym': ''}],
-                [optimal_betas[0], plotting.scatter_plotter, {'label': 'Analytical $\\lambda$ 0.01'}]
-                #[optimal_betas[1], plotting.scatter_plotter, {'label': 'Analytical $\\lambda$ 0.001'}]
+            ['Ridge trained by SGD', np.arange(1, optimal_betas.shape[1] + 1),
+                [[sgd_ridge_betas, {'notch': False, 'sym': ''}],
+                [optimal_betas[0], plotting.scatter_plotter, {'label': 'Analytical $\\lambda$ 0.01'}],
                 ]
-            ]
+            ],
+            ['OLS trained by SGD', np.arange(1, optimal_betas.shape[1] + 1),
+                [[sgd_ols_betas, {'notch': False, 'sym': ''}],
+                [optimal_betas[0], plotting.scatter_plotter, {'label': 'Analytical $\\lambda$ 0.01'}],
+                ]
+            ],
         ]
 
         side_by_side_parameters = {
@@ -386,7 +406,6 @@ if __name__ == '__main__':
             'title': ['$\\beta$ parameters', 'beta'],
         }
         plotting.side_by_side(*plots, **side_by_side_parameters)
-
 
     def momemtun_plot(data):
         polynomials = 8
