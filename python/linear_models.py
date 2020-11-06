@@ -62,7 +62,6 @@ class LinearRegression:
     def __init__(self, name="OLS", scaler=StandardScaler(), x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.random.randn(*shape)):
         self.name = name
         self.scaler = scaler
-        self._lambda = 0
         self.momentum = momentum
         self.beta = beta_initialiser((x_shape, init_conds))
         self.beta_initialiser = beta_initialiser
@@ -144,7 +143,7 @@ class LinearRegression:
                     Differentiated MSE.
 
         """
-        return np.dot(X.T, 2/X.shape[0]*(y_tilde - y)) + 2*self._lambda*self.beta
+        return np.dot(X.T, 2/X.shape[0]*(y_tilde - y))
 
     def update_parameters(self, X, y, y_tilde):
         """Performs one step of gradient descent.

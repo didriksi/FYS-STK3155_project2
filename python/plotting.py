@@ -38,7 +38,6 @@ def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color="C0",
         middle = lower_midddle_upper_y[1]
         upper = lower_midddle_upper_y[2]
         ax.plot(x, middle, color)
-        print(lower.shape, upper.shape, x.shape)
         ax.fill_between(x, lower, upper, color=color, alpha=.5, **kwargs)
     elif lower_midddle_upper_y.shape[0] == 2:
         lower = lower_midddle_upper_y[0]
@@ -53,6 +52,7 @@ def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color="C0",
 
 def box_plotter(ax, x, y, *args, **kwargs):
     ax.boxplot(y, *args, **kwargs)
+    ax.set_xticks(x[::len(x)//10])
 
 def scatter_plotter(ax, x, y, *args, **kwargs):
     ax.scatter(x, y, *args, **kwargs)

@@ -10,7 +10,7 @@ import linear_models
 import plotting
 import neural_model
 
-def sgd(model, x_train, x_test, y_train, y_test, epochs=50, mini_batch_size=1, metric=metrics.MSE):
+def sgd(model, x_train, x_test, y_train, y_test, epochs=200, epochs_without_progress=50, mini_batch_size=1, metric=metrics.MSE):
     """Stochastic gradient descent
 
     Parameters:
@@ -45,15 +45,24 @@ def sgd(model, x_train, x_test, y_train, y_test, epochs=50, mini_batch_size=1, m
     errors = np.zeros((model.parallell_runs, epochs))
 
     for epoch in range(epochs):
-        errors[:,epoch] = metrics.MSE(model.predict(x_test), y_test)
-        
+        errors[:,epoch] = metric(model.predict(x_test), y_test)
+        if epoch%epochs_without_progress == 0 and epoch >= epochs_without_progress:
+            if epoch == epochs_without_progress:
+                prev_error = np.mean(errors[:,epoch-epochs_without_progress:epoch])
+            else:
+                current_error = np.mean(errors[:,epoch-epochs_without_progress:epoch])
+                if current_error > prev_error:
+                    errors[:,epoch:] = errors[:,[epoch]]
+                    print("breaking at epoch", epoch)
+                    break
+                prev_error = current_error
+
         np.random.shuffle(indexes)
         mini_batches = indexes.reshape(-1, mini_batch_size)
         for mini_batch in mini_batches:
             y_tilde = model.predict(x_train[mini_batch])
             model.update_parameters(x_train[mini_batch], y_train[mini_batch], y_tilde)
 
-        #TODO: Early stopping
     return model, errors
 
 def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
@@ -335,8 +344,8 @@ if __name__ == '__main__':
             """10*stdn"""
             return 10*np.random.randn(*shape)
         
-        common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
-        subplot_ridge_uniques = [{'_lambda': 0.01}, {'_lambda': 0.001}]
+        common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 100, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
+        subplot_ridge_uniques = [{'_lambda': 0.01}]
         subsubplot_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-2, -1.5, 3)]
 
         unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size} for mini_batch_size in [10, 20, 40]]
@@ -350,21 +359,31 @@ if __name__ == '__main__':
             )
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ridge_models, unique_sgd_kwargs*2)]
-        errors, subtitle, subplots = sgd_on_models(X_train, X_validate, data['y_train'], data['y_validate'], *subplots, epochs=4000)
+        errors, subtitle, subplots = sgd_on_models(X_train, X_validate, data['y_train'], data['y_validate'], *subplots, epochs=20000)
 
         title = ['Convergence test', 'convergence', subtitle]
         plot_sgd_errors(errors, title)
 
         models = [model for models, _ in subplots for model in models]
         sgd_betas = np.array([model.beta for model in models])
-        sgd_betas = sgd_betas.transpose(1, 2, 0).reshape((sgd_betas.shape[0], -1)).T
-        optimal_betas = np.array([model.fit(X_train, data['y_train']) for model in models])[:,:,0]
+        sgd_betas = sgd_betas.transpose(1, 2, 0).reshape((sgd_betas.shape[1], -1)).T
 
-        plots = [['SGD', np.arange(sgd_betas.shape[0]), [[sgd_betas, {'notch': True, 'sym': ''}]]], ['Analytical', np.arange(sgd_betas.shape[0]), [[optimal_betas, {'notch': True, 'sym': ''}]]]]
+        optimal_models = [linear_models.RegularisedLinearRegression("Ridge", linear_models.beta_ridge, _lambda=_lambda) for _lambda in (0.01, )]
+        optimal_betas = np.array([model.fit(X_train, data['y_train']) for model in optimal_models])[:,:,0]
+
+        plots = [
+            ['', np.arange(1, optimal_betas.shape[1] + 1),
+                [[sgd_betas, {'notch': False, 'sym': ''}],
+                [optimal_betas[0], plotting.scatter_plotter, {'label': 'Analytical $\\lambda$ 0.01'}]
+                #[optimal_betas[1], plotting.scatter_plotter, {'label': 'Analytical $\\lambda$ 0.001'}]
+                ]
+            ]
+        ]
+
         side_by_side_parameters = {
             'plotter': plotting.box_plotter,
             'axis_labels': ('Beta parameter #', 'Values'),
-            'title': ['Beta parameters', 'beta'],
+            'title': ['$\\beta$ parameters', 'beta'],
         }
         plotting.side_by_side(*plots, **side_by_side_parameters)
 
