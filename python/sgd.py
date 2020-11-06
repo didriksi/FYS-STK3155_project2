@@ -311,8 +311,6 @@ if __name__ == '__main__':
         X_train = tune.poly_design_matrix(polynomials, data['x_train'])
         X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
 
-        
-        
         common_ols_kwargs = {'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
         common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
         subplot_ols_uniques = [{}]
@@ -347,19 +345,29 @@ if __name__ == '__main__':
         X_train = tune.poly_design_matrix(polynomials, data['x_train'])
         X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
         
-        common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 100, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
-        subplot_ridge_uniques = [{'_lambda': 0.01}]
-        subsubplot_ridge_linear_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-2, -1.5, 3)]
+        common_ridge1_kwargs = {'_lambda': 0.01, 'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 300, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
+        common_ridge2_kwargs = {'_lambda': 0.0001, 'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 300, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
+        subplot_ridge_uniques = [{}]
+        subsubplot_ridge_linear_uniques = [{'learning_rate': learning_rate_adaptation(5e-2, 1/100000)}]
 
-        common_ols_kwargs = {'momentum': 0.5, 'init_conds': 100, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
-        subsubplot_ols_linear_uniques = [{'learning_rate': learning_rate_adaptation(base_learning_rate, 1/300000)} for base_learning_rate in np.logspace(-1, -0.9, 3)]
+        common_ols_kwargs = {'momentum': 0.5, 'init_conds': 300, 'x_shape': X_train.shape[1], 'beta_initialiser': beta_initialiser}
+        subplot_ols_uniques = [{}]
+        subsubplot_ols_linear_uniques = [{'learning_rate': learning_rate_adaptation(5e-2, 1/100000)}]
 
         unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size} for mini_batch_size in [10, 20]]
 
-        ridge_models = make_models(
+        ridge_models1 = make_models(
             linear_models.RegularisedLinearRegression,
-            common_ridge_kwargs,
-            subplot_ridge_uniques,
+            common_ridge1_kwargs,
+            [{}],
+            len(unique_sgd_kwargs),
+            subsubplot_ridge_linear_uniques
+            )
+
+        ridge_models2 = make_models(
+            linear_models.RegularisedLinearRegression,
+            common_ridge2_kwargs,
+            [{}],
             len(unique_sgd_kwargs),
             subsubplot_ridge_linear_uniques
             )
@@ -372,14 +380,19 @@ if __name__ == '__main__':
             subsubplot_ols_linear_uniques
             )
 
-        subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(ridge_models + ols_models, unique_sgd_kwargs*(len(ridge_models) + len(ols_models)))]
+        models_list = ridge_models1 + ridge_models2 + ols_models 
+
+        subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(models_list, unique_sgd_kwargs*(len(models_list)))]
         errors, subtitle, subplots = sgd_on_models(X_train, X_validate, data['y_train'], data['y_validate'], *subplots, epochs=20000, epochs_without_progress=200)
 
         title = ['Convergence test', 'convergence', subtitle]
         plot_sgd_errors(errors, title)
 
-        sgd_ridge_betas = np.array([model.beta for models in ridge_models for model in models])
-        sgd_ridge_betas = sgd_ridge_betas.transpose(1, 2, 0).reshape((sgd_ridge_betas.shape[1], -1)).T
+        sgd_ridge1_betas = np.array([model.beta for models in ridge_models1 for model in models])
+        sgd_ridge1_betas = sgd_ridge1_betas.transpose(1, 2, 0).reshape((sgd_ridge1_betas.shape[1], -1)).T
+
+        sgd_ridge2_betas = np.array([model.beta for models in ridge_models2 for model in models])
+        sgd_ridge2_betas = sgd_ridge2_betas.transpose(1, 2, 0).reshape((sgd_ridge2_betas.shape[1], -1)).T
 
         sgd_ols_betas = np.array([model.beta for models in ols_models for model in models])
         sgd_ols_betas = sgd_ols_betas.transpose(1, 2, 0).reshape((sgd_ols_betas.shape[1], -1)).T
@@ -388,8 +401,13 @@ if __name__ == '__main__':
         optimal_betas = np.array([model.fit(X_train, data['y_train']) for model in optimal_models])[:,:,0]
 
         plots = [
-            ['Ridge trained by SGD', np.arange(1, optimal_betas.shape[1] + 1),
-                [[sgd_ridge_betas, {'notch': False, 'sym': ''}],
+            ['Ridge ($\\lambda 0.01$) trained by SGD', np.arange(1, optimal_betas.shape[1] + 1),
+                [[sgd_ridge1_betas, {'notch': False, 'sym': ''}],
+                [optimal_betas[0], plotting.scatter_plotter, {'label': 'Analytical $\\lambda$ 0.01'}],
+                ]
+            ],
+            ['Ridge ($\\lambda 0.0001$) trained by SGD', np.arange(1, optimal_betas.shape[1] + 1),
+                [[sgd_ridge2_betas, {'notch': False, 'sym': ''}],
                 [optimal_betas[0], plotting.scatter_plotter, {'label': 'Analytical $\\lambda$ 0.01'}],
                 ]
             ],
@@ -403,7 +421,7 @@ if __name__ == '__main__':
         side_by_side_parameters = {
             'plotter': plotting.box_plotter,
             'axis_labels': ('Beta parameter #', 'Values'),
-            'title': ['$\\beta$ parameters', 'beta'],
+            'title': ['$\\beta$ parameters', 'beta', subtitle],
         }
         plotting.side_by_side(*plots, **side_by_side_parameters)
 
@@ -435,9 +453,9 @@ if __name__ == '__main__':
         plot_sgd_errors(errors, title)
 
     def neural_regression(data):
-        common_kwargs = {}
-        subplot_uniques = [{'layers': [{'height': 2}, {'height': hidden}, {'height': 1}]} for hidden in range(5,20,2)]
-        subsubplot_uniques = [{'learning_rate': learning_rate, 'momentum': momentum} for learning_rate in np.logspace(-4, -1, 4) for momentum in [0., 0.4]]
+        common_kwargs = {'momentum': 0.5}
+        subplot_uniques = [{'layers': [{'height': 2}, *hidden_layers, {'height': 1}]} for hidden_layers in [[{'height': hidden}] for hidden in [2,4]] + [[{'height': hidden}, {'height': hidden}] for hidden in [2, 3]]]
+        subsubplot_uniques = [{'learning_rate': learning_rate_adaptation(base_learning_rate, 1/200000)} for base_learning_rate in np.logspace(-3, -1, 3)]
 
         unique_sgd_kwargs = [{'mini_batch_size': 20}]
 
@@ -451,9 +469,9 @@ if __name__ == '__main__':
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(neural_models, unique_sgd_kwargs*len(neural_models))]
 
-        errors, subtitle, subplots = sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=2000)
+        errors, subtitle, subplots = sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=2000, epochs_without_progress=100)
 
-        title = ['Neural model, Regression test', 'neural_regression', subtitle]
+        title = ['Neural model, regression on terrain data', 'neural_regression', subtitle]
 
         plot_sgd_errors(errors, title)
 
@@ -500,6 +518,12 @@ if __name__ == '__main__':
     if 'betas' in sys.argv:
         beta_variance(terrainData)
 
+    le = learning_rate_adaptation(0.2, 0.001)
+    def test():
+        """test_doc"""
+        return 0
+    print(le.__doc__)
+    print(test.__doc__)
 
 
 
