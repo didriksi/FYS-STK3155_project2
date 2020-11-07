@@ -293,6 +293,8 @@ class Network:
                 backprop_data = self.network[i+1]
 
             self.network[i].back_propagate(backprop_data)
+            # print(i)
+            # print(self.network[i].d)
 
             #self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
             self.network[i].bias_velocity *= self.momentum

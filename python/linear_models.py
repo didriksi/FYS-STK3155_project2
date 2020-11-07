@@ -49,6 +49,10 @@ def beta_lasso(_lambda, X, y):
     lasso.fit(X, y)
     return lasso.coef_
 
+def beta_initialiser(shape):
+    """$3 \\cdot \\mathbb{N}(0,1)$"""
+    return 3*np.random.randn(*shape)
+
 class LinearRegression:
     """Fits on data, and makes some predictions based on linear regression.
 
@@ -59,7 +63,7 @@ class LinearRegression:
     scaler:     object
                 Instance of class that has a fit and transform method for scaling predictor data.
     """
-    def __init__(self, name="OLS", scaler=StandardScaler(), x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.random.randn(*shape)):
+    def __init__(self, name="OLS", scaler=StandardScaler(), x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=beta_initialiser):
         self.name = name
         self.scaler = scaler
         self.momentum = momentum
@@ -103,7 +107,7 @@ class LinearRegression:
         y_pred = X @ self.beta
         return y_pred
 
-    def compile(self, x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.random.randn(*shape)):
+    def compile(self, x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=beta_initialiser):
         """Prepares the model for training by gradient descent.
         
         Parameters:
@@ -220,7 +224,7 @@ class RegularisedLinearRegression(LinearRegression):
     scaler:     object
                 Instance of class that has a fit and transform method for scaling predictor data.
     """
-    def __init__(self, name, beta_func, _lambda=0.01, scaler=StandardScaler(), x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.random.randn(*shape)):
+    def __init__(self, name, beta_func, _lambda=0.01, scaler=StandardScaler(), x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=beta_initialiser):
         super().__init__(name=name, scaler=scaler, x_shape=x_shape, init_conds=init_conds, learning_rate=learning_rate, momentum=momentum, beta_initialiser=beta_initialiser)
         self.beta_func = beta_func
         self._lambda = _lambda
