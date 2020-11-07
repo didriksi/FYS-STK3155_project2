@@ -5,7 +5,8 @@ def sigmoid(z):
     #return np.exp(z)/(1 + np.exp(z))
 
 def sigmoid_diff(z):
-    return sigmoid(z)*(1-sigmoid(z))
+    a = sigmoid(z)
+    return a*(1-a)
 
 def ReLu(z):
     return np.where(z > 0, z, 0)
