@@ -174,7 +174,7 @@ class Network:
         for i, layer in enumerate(layers):
             if i == 0:
                 self.addLayer(Input(**layer))
-            if i == len(layers) - 1:
+            elif i == len(layers) - 1:
                 self.addLayer(Output(**layer))
                 self.compile()
             else:
@@ -182,7 +182,7 @@ class Network:
 
     @property
     def property_dict(self):
-        return {'model_name': self.name, 'momentum': self.momentum, 'learning_rate': self.learning_rate_name, 'layers': ', '.join([str(layer.height) for layer in self.network[1:]])}
+        return {'model_name': self.name, 'momentum': self.momentum, 'learning_rate': self.learning_rate_name, 'layers': ', '.join([str(layer.height) for layer in self.network])}
 
     @property
     def learning_rate_name(self):

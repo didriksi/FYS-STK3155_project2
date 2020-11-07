@@ -86,7 +86,8 @@ def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
                 Array with target data used to test the model, and calculate error.
     *subplots:  (models, sgd kwargs)
                 Each tuples first element is a list of models to be tested together, while the second is kwargs passed to sgd().
-                The results is plotted as a subplot.
+                The results is plotted as a subplot. If models is a list of lists, the first element is the model, and the rest is
+                x_train, x_test, y_train, y_test for that specific model.
     **sgd_kwargs:
                 kwargs
                 Additional kwargs that are shared between the different subplots, sent to sgd.
@@ -122,6 +123,12 @@ def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
         subplot_title_dict.update(subplot_sgd_kwargs)
         subplot_labels = []
         for j, model in enumerate(models):
+            if isinstance(model, list):
+                data = model[1:]
+                model = model[0]
+            else:
+                data = [x_train, x_test, y_train, y_test]
+
             subplot_dict = model.property_dict
             subplot_dict.update(sgd_kwargs)
             subplot_labels.append(subplot_dict)
@@ -129,7 +136,7 @@ def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
             step += 1
             print(f"\r |{'='*(step*50//end_step)}{' '*(50-step*50//end_step)}| {step/end_step:.2%}", end="", flush=True)
 
-            model, errors[i,j] = sgd(model, x_train, x_test, y_train, y_test, **sgd_kwargs)
+            model, errors[i,j] = sgd(model, *data, **sgd_kwargs)
 
         # Make dictionaries and eventually strings describing the unique aspects of each subplot and subsubplot
         filtered_labels_dicts, title_dict = filter_dicts(subplot_labels)
@@ -453,9 +460,9 @@ if __name__ == '__main__':
         plot_sgd_errors(errors, title)
 
     def neural_regression(data):
-        common_kwargs = {'momentum': 0.5}
-        subplot_uniques = [{'layers': [{'height': 2}, *hidden_layers, {'height': 1}]} for hidden_layers in [[{'height': hidden}] for hidden in [2,4]] + [[{'height': hidden}, {'height': hidden}] for hidden in [2, 3]]]
-        subsubplot_uniques = [{'learning_rate': learning_rate_adaptation(base_learning_rate, 1/200000)} for base_learning_rate in np.logspace(-3, -1, 3)]
+        common_kwargs = {'momentum': 0.6}
+        subplot_uniques = [{'layers': [{'height': 2}, *hidden_layers, {'height': 1, 'activation': lambda x: x, 'diff_activation': lambda x: 1}]} for hidden_layers in [[{'height': hidden}] for hidden in [2,4]] + [[{'height': hidden}, {'height': hidden}] for hidden in [2, 3]]]
+        subsubplot_uniques = [{'learning_rate': learning_rate_adaptation(5e-2, 1/7000)}, {'learning_rate': learning_rate_adaptation(1e-1, 1/5000)}, {'learning_rate': learning_rate_adaptation(5e-1, 1/2500)}]
 
         unique_sgd_kwargs = [{'mini_batch_size': 20}]
 
@@ -469,7 +476,7 @@ if __name__ == '__main__':
 
         subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(neural_models, unique_sgd_kwargs*len(neural_models))]
 
-        errors, subtitle, subplots = sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=2000, epochs_without_progress=100)
+        errors, subtitle, subplots = sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=6000, epochs_without_progress=300)
 
         title = ['Neural model, regression on terrain data', 'neural_regression', subtitle]
 
@@ -501,6 +508,34 @@ if __name__ == '__main__':
 
         plot_sgd_errors(errors, title)
 
+    def regression_compare(data):
+        polynomials = 8
+        X_train = tune.poly_design_matrix(polynomials, data['x_train'])
+        X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
+
+        neural = neural_model.Network(
+            momentum=0.6,
+            layers=[{'height': 2}, {'height': 3}, {'height': 3}, {'height': 1}],
+            learning_rate=learning_rate_adaptation(5e-1, 1/2500)
+            )
+
+        ridge = [linear_models.RegularisedLinearRegression(
+            name='Ridge',
+            beta_func=linear_models.beta_ridge,
+            momentum=0.6,
+            _lambda=0.001,
+            x_shape=X_train.shape[1],
+            beta_initialiser=beta_initialiser
+            ), X_train, X_validate, data['y_train'], data['y_validate']]
+
+        subplots = [([neural, ridge], {'mini_batch_size': 20})]
+
+        errors, subtitle, subplots = sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=6000, epochs_without_progress=300)
+
+        title = ['Neural vs Ridge model, regression on terrain data', 'regression_vs', subtitle]
+
+        plot_sgd_errors(errors, title)
+
     import real_terrain
     import mnist
 
@@ -517,6 +552,8 @@ if __name__ == '__main__':
         neural_classification(mnistData)
     if 'betas' in sys.argv:
         beta_variance(terrainData)
+    if 'compare' in sys.argv and 'reg' in sys.argv:
+        regression_compare(terrainData)
 
 
 
