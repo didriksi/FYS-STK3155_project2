@@ -2,7 +2,6 @@ import numpy as np
 
 def sigmoid(z):
     return 1/(1 + np.exp(-z))
-    #return np.exp(z)/(1 + np.exp(z))
 
 def sigmoid_diff(z):
     a = sigmoid(z)
@@ -24,12 +23,9 @@ def linear_diff(z):
 def softmax(z):
     e_z = np.exp(z - np.max(z))
     return e_z / np.sum(e_z)
-    # e_z = np.exp(z)
-    # return e_z/np.sum(e_z)
 
 def softmax_diff(z):
     grad = np.diag(z) - np.dot(z, z.T)
-    #print(f"{np.sum(np.abs(grad)):20.5}  {np.sum(np.abs(z)):20.5}")
     return grad
 
 def MSE_diff(actualOutput, optimal_output):
@@ -93,16 +89,7 @@ class Dense(Layer):
         self.a = self.activation(self.z)
 
     def back_propagate(self, nextLayer):
-        #if np.any(np.isnan(np.dot(nextLayer.weights, nextLayer.d.T))):
-        #print("\n\nback_propagate")
-        #print(np.dot(nextLayer.weights, nextLayer.d.T))
-        #print(nextLayer.weights)
-        #print(nextLayer.d.T)
-        #print(self.diff_activation(self.z))
-        #print(self.z)
-        #print(self.z, self.diff_activation(self.z))
         self.d = np.dot(nextLayer.weights, nextLayer.d.T).T * self.diff_activation(self.z)
-        #print(self.d)
 
     def set_prevLayer(self, prevLayerHeight):
         """Initialise weights and biases after making the layer before it.
@@ -251,30 +238,6 @@ class Network:
         self.feed_forward(x)
         return self.network[-1].a
 
-    def get_gradient(self, x, optimal_output, ytilde):
-        """Propagates the error back through the network, and steps in a direction of less loss.
-        
-        Parameters:
-        -----------
-        x:          for compatibility with sgd
-        optimal_output:
-                    array of floats
-                    Optimal or desired output values. Must have same shape as output layer.
-        y:          for compatibility with sgd
-        """
-
-        for i in reversed(range(1, len(self.network))):
-            if i == len(self.network) - 1:
-                backprop_data = optimal_output
-            else:
-                backprop_data = self.network[i+1]
-
-            self.network[i].back_propagate(backprop_data)
-
-            #self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
-            self.network[i].bias += np.mean(self.network[i].d, axis=0) * self.learning_rate
-            self.network[i].weights += np.dot(self.network[i - 1].a.T, self.network[i].d) * self.learning_rate
-
     def update_parameters(self, x, optimal_output, ytilde):
         """Propagates the error back through the network, and steps in a direction of less loss.
         
@@ -293,19 +256,9 @@ class Network:
             else:
                 backprop_data = self.network[i+1]
 
-            if self.step == 360 or self.step == 359 or self.step == 358 or self.step == 0:
-                print('  ', i)
-                if i == 2:
-                    print(backprop_data)
-                else:
-                    print('  weights: ', backprop_data.weights.shape, backprop_data.weights, '\n  ds: ', backprop_data.d.shape, backprop_data.d)
-
             self.network[i].back_propagate(backprop_data)
-            # print(self.network[i].d)
 
-            #self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
             self.network[i].bias_velocity *= self.momentum
-            #print(i, self.network[i].bias_velocity.shape, self.network[i].d.shape)
             self.network[i].bias_velocity += self.learning_rate(self.step) * np.mean(self.network[i].d, axis=0)
             self.network[i].bias += self.network[i].bias_velocity
 
@@ -314,8 +267,6 @@ class Network:
             self.network[i].weights += self.network[i].weights_velocity
 
         self.step += 1
-        if self.step == 360 or self.step == 359 or self.step == 358 or self.step == 0:
-            print(self.step)
 
     def __str__(self):
         """Returns a printable string with all the networks biases and weights.
