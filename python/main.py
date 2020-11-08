@@ -215,6 +215,38 @@ def neural_classification(data, epochs=600, mini_batch_size=10):
 
     sgd.plot_sgd_errors(errors, title)
 
+    classification_accuracy(subplots, data)
+
+
+def classification_accuracy(subplots, data):
+    from sklearn.metrics import classification_report, confusion_matrix
+
+    best_models = []
+    for j, models in enumerate(subplots[:, 0]):
+        model_scores = []
+        for k, model in enumerate(models):
+            predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
+            true_val = np.where(mnistData['y_validate'] == 1)
+            accuracy = np.mean(predict_val == true_val)
+            model_scores.append(accuracy)
+        max_score = max(model_scores)
+        best_models.append([j, model_scores.index(max_score)])
+
+    for index in best_models:
+        model = subplots[index[0], index[1]]
+        predict_train = np.argmax(model.predict(data['x_train']), axis=1)
+        predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
+        predict_test = np.argmax(model.predict(data['x_test']), axis=1)
+
+        true_train = np.where(mnistData['y_train'] == 1)
+        true_val = np.where(mnistData['y_validate'] == 1)
+        true_test = np.where(mnistData['y_test'] == 1)
+
+        print("Training report ", model.name)
+        print(classification_report(true_val, predict_val))
+
+
+
 def regression_compare(data, epochs=6000, epochs_without_progress=300, mini_batch_size=20):
     polynomials = 8
     X_train = tune.poly_design_matrix(polynomials, data['x_train'])
@@ -260,6 +292,7 @@ if __name__ == '__main__':
         neural_regression(terrainData)
     if 'neural' in sys.argv and 'class' in sys.argv:
         neural_classification(mnistData)
+
     if 'betas' in sys.argv:
         beta_variance(terrainData)
     if 'compare' in sys.argv and 'reg' in sys.argv:
