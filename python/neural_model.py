@@ -11,8 +11,13 @@ def ReLu(z):
     return np.where(z > 0, z, 0)
 
 def ReLu_diff(z):
-    z = np.where(z <= 0, z, 1)
-    return np.where(z > 0, z, 0)
+    return np.where(z > 0, 1, 0)
+
+def leaky_ReLu(z):
+    return np.where(z > 0, z, z * 0.01) 
+
+def leaky_ReLu_diff(z):
+    return np.where(z > 0, 1, 0.01)
 
 def linear(z):
     return z

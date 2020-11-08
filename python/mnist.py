@@ -95,6 +95,7 @@ def get_data(train_size, test_size, even=True, truncate=False):
 
     data['x'] = np.concatenate((data['x_train'], data['x_validate'], data['x_test']), axis=0)
     data['y'] = np.concatenate((data['y_train'], data['y_validate'], data['y_test']), axis=0)
+
     return data
 
 def plot_data(*data_args):

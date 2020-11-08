@@ -14,6 +14,6 @@ model_bias = lambda y, y_tilde: np.mean((y - np.mean(y_tilde, axis=0)) ** 2)
 
 def cross_entropy(y, y_tilde):
     """Cross entropy"""
-    return - np.mean(y * np.log(y_tilde) + (1 - y) * np.log(1 - y_tilde))
+    return - np.mean(y * np.log(y_tilde + 1e-12))
 
 #cross_entropy = lambda y, y_tilde: np.mean(y * np.log(y_tilde) + (1 - y) * np.log(1 - y_tilde))
