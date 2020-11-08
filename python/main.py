@@ -160,10 +160,11 @@ def momemtun_plot(data):
 
 def neural_regression(data, mini_batch_size=20, epochs=6000, epochs_without_progress=300):
     total_steps = epochs * len(data['x_train'])//mini_batch_size
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(0).compile(total_steps) for base, decay in [(5e-2, 1/7000), (1e-2, 1/5000), (5e-1, 1/2500)]]
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(1e-4, 1/5000), (5e-3, 1/2500), (1e-3, 1/2000)]]
 
     common_kwargs = {'momentum': 0.6}
-    subplot_uniques = [{'layers': [{'height': 2}, *hidden_layers, {'height': 1, 'activation': lambda x: x, 'diff_activation': lambda x: 1}]} for hidden_layers in [[{'height': hidden}] for hidden in [2,4]] + [[{'height': hidden}, {'height': hidden}] for hidden in [2, 3]]]
+    hidden_layers_sets = [[{'height': hidden}] for hidden in [2, 4, 6]] + [[{'height': 2}, {'height': 2}]]
+    subplot_uniques = [{'layers': [{'height': 2}, *hidden_layers, {'height': 1, 'activation': lambda x: x, 'diff_activation': lambda x: 1}]} for hidden_layers in hidden_layers_sets]
     subsubplot_uniques = [{'learning_rate': learning_rate_func} for learning_rate_func in learning_rates]
 
     unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
@@ -184,15 +185,19 @@ def neural_regression(data, mini_batch_size=20, epochs=6000, epochs_without_prog
 
     sgd.plot_sgd_errors(errors, title)
 
-def neural_classification(data):
-    common_kwargs = {'momentum': 0.3}
-    subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10}]}, {'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10}]}] # , 'activation': neural_model.softmax, 'diff_activation': neural_model.softmax_diff
+def neural_classification(data, epochs=600, mini_batch_size=10):
+
+    total_steps = epochs * len(data['x_train'])//mini_batch_size
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10000).compile(total_steps) for base, decay in [(1e-10, 1/5000)]]
+
+    common_kwargs = {'momentum': 0.5}
+    subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.softmax, 'diff_activation': neural_model.softmax_diff}]}, {'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'diff_activation': neural_model.softmax_diff}]}] # , 'activation': neural_model.softmax, 'diff_activation': neural_model.softmax_diff
     #subplot_uniques = [{'layers': [{'height': 64}, {'height': hidden}, {'height': 10}]} for hidden in np.power(2, np.arange(4,7))] # , 'activation': neural_model.softmax, 'diff_activation': neural_model.softmax_diff
     #subsubplot_uniques = [{}]
-    subsubplot_uniques = [{'learning_rate': learning_rate} for learning_rate in np.logspace(-3, -1, 3)]
+    subsubplot_uniques = [{'learning_rate': learning_rate} for learning_rate in learning_rates]
     #subsubplot_uniques = [{'learning_rate': learning_rate, 'momentum': momentum} for learning_rate in np.logspace(-10, -6, 2) for momentum in [0., 0.4]]
 
-    unique_sgd_kwargs = [{'mini_batch_size': 10}]
+    unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
 
     neural_models = helpers.make_models(
         neural_model.Network,
@@ -204,21 +209,23 @@ def neural_classification(data):
 
     subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(neural_models, unique_sgd_kwargs*len(neural_models))]
 
-    errors, subtitle, subplots = sgd.sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=600)
+    errors, subtitle, subplots = sgd.sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=epochs)
 
     title = ['Neural model, Classification test', 'neural_classification', subtitle]
 
     sgd.plot_sgd_errors(errors, title)
 
-def regression_compare(data):
+def regression_compare(data, epochs=6000, epochs_without_progress=300, mini_batch_size=20):
     polynomials = 8
     X_train = tune.poly_design_matrix(polynomials, data['x_train'])
     X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
+    
+    total_steps = epochs * len(data['x_train'])//mini_batch_size
 
     neural = neural_model.Network(
-        momentum=0.5,
-        layers=[{'height': 2}, {'height': 8}, {'height': 8}, {'height': 1}, {'height': 1, 'activation': lambda z: z, 'diff_activation': lambda z: 1}],
-        learning_rate=metrics.learning_rate_ramp_up
+        momentum=0.6,
+        layers=[{'height': 2}, {'height': 2}, {'height': 1, 'activation': lambda z: z, 'diff_activation': lambda z: 1}],
+        learning_rate=learning_rate.Learning_rate(base=5e-3, decay=1/2500).ramp_up(10).compile(total_steps)
         )
 
     ridge = [linear_models.RegularisedLinearRegression(
@@ -230,9 +237,9 @@ def regression_compare(data):
         learning_rate=0.01
         ), X_train, X_validate, data['y_train'], data['y_validate']]
 
-    subplots = [([neural, ridge], {'mini_batch_size': 20})]
+    subplots = [([neural, ridge], {'mini_batch_size': mini_batch_size})]
 
-    errors, subtitle, subplots = sgd.sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=6000, epochs_without_progress=300)
+    errors, subtitle, subplots = sgd.sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=epochs, epochs_without_progress=epochs_without_progress)
 
     title = ['Neural vs Ridge model, regression on terrain data', 'regression_vs', subtitle]
 

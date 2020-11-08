@@ -117,7 +117,7 @@ class Dense(Layer):
                     Number of neurons in previous layer.
         """
         self.weights = np.random.normal(0, 1/self.height, (prevLayerHeight, self.height))
-        self.bias = np.random.normal(0, 1/self.height, self.height)
+        self.bias = np.zeros(self.height)
 
         self.weights_velocity = np.zeros_like(self.weights)
         self.bias_velocity = np.zeros_like(self.bias)
@@ -168,7 +168,6 @@ class Network:
         self.name = name
         self.learning_rate = learning_rate if callable(learning_rate) else lambda step: learning_rate
         self.network = []
-        self.theta = np.array([], dtype=object)
         self.momentum = momentum
         self.step = 0
 
@@ -199,7 +198,6 @@ class Network:
     def parallell_runs(self):
         return self.network[-1].height
 
-
     def set_learning_rate(self, learning_rate):
         self.learning_rate = learning_rate
 
@@ -212,7 +210,6 @@ class Network:
                     Layer to add to the end of this network.
         """
         self.network.append(layer)
-
 
     def compile(self, x1=None, x2=None, momentum=None):
         """Compiles the network by initialising weights, and making the list of layers an array.
@@ -288,12 +285,18 @@ class Network:
 
         for i in reversed(range(1, len(self.network))):
             if i == len(self.network) - 1:
-                backprop_data = np.atleast_2d(optimal_output)
+                backprop_data = optimal_output
             else:
                 backprop_data = self.network[i+1]
 
+            if self.step == 360 or self.step == 359 or self.step == 358 or self.step == 0:
+                print('  ', i)
+                if i == 2:
+                    print(backprop_data)
+                else:
+                    print('  weights: ', backprop_data.weights.shape, backprop_data.weights, '\n  ds: ', backprop_data.d.shape, backprop_data.d)
+
             self.network[i].back_propagate(backprop_data)
-            # print(i)
             # print(self.network[i].d)
 
             #self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
@@ -303,10 +306,12 @@ class Network:
             self.network[i].bias += self.network[i].bias_velocity
 
             self.network[i].weights_velocity *= self.momentum
-            self.network[i].weights_velocity += self.learning_rate(self.step) * np.dot(self.network[i - 1].a.T, self.network[i].d)
+            self.network[i].weights_velocity += self.learning_rate(self.step) * 1/self.network[i-1].height * np.dot(self.network[i - 1].a.T, self.network[i].d)
             self.network[i].weights += self.network[i].weights_velocity
 
         self.step += 1
+        if self.step == 360 or self.step == 359 or self.step == 358 or self.step == 0:
+            print(self.step)
 
     def __str__(self):
         """Returns a printable string with all the networks biases and weights.
