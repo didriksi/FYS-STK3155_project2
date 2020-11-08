@@ -32,10 +32,7 @@ def softmax_diff(z):
     #print(f"{np.sum(np.abs(grad)):20.5}  {np.sum(np.abs(z)):20.5}")
     return grad
 
-def cost(actualOutput, optimal_output):
-    return np.square(optimal_output - actualOutput)
-
-def cost_diff(actualOutput, optimal_output):
+def MSE_diff(actualOutput, optimal_output):
     return 2 * (optimal_output - actualOutput)
 
 class Layer:
@@ -137,20 +134,25 @@ class Output(Dense):
     cost_diff:  array of floats -> array of floats
                 Differentiation of cost function.
     """
-    def __init__(self, height, activation=sigmoid, diff_activation=sigmoid_diff, cost_diff=cost_diff):
-        super().__init__(height, activation=activation, diff_activation=diff_activation)
-        self.cost_diff = cost_diff
+    def __init__(self, height, activation=sigmoid, diff_activation=sigmoid_diff, cost_diff=MSE_diff, d_func=None):
+        if cost_z_diff is None:
+            super().__init__(height, activation=activation, diff_activation=diff_activation)
+            self.cost_diff = cost_diff
+            self.d_func = lambda y: self.cost_diff(self.a, y) * self.diff_activation(self.z)
+        else:
+            super().__init__(height, activation=activation, diff_activation=None)
+            self.cost_diff = None
+            self.d_func = d_func
 
-    def back_propagate(self, optimal):
+    def back_propagate(self, y):
         """back_propagate error through this layer.
 
         Parameters:
         -----------
-        optimal:    array of floats
+        y:    array of floats
                     Optimal output.
         """
-        #print(self.a.shape, optimal.shape, self.z.shape)
-        self.d = self.cost_diff(self.a, optimal) * self.diff_activation(self.z)
+        self.d = self.d_func(y)
 
 
 class Network:
