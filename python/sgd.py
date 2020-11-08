@@ -157,7 +157,8 @@ def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
 
     print("")
 
-    metric_string = metrics.MSE.__doc__ if kwargs['metric'] is None else kwargs['metric'].__doc__
+    metric_string = metrics.MSE.__doc__ if 'metric' not in sgd_kwargs else sgd_kwargs['metric'].__doc__
+
 
     return errors_df, plot_title, subplots, metric_string
 

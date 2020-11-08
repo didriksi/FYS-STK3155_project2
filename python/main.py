@@ -7,6 +7,7 @@ import linear_models
 import neural_model
 import helpers
 import sgd
+import metrics
 
 def conf_interval_plot(data, epochs=300):
     polynomials = 8
@@ -185,17 +186,16 @@ def neural_regression(data, mini_batch_size=20, epochs=6000, epochs_without_prog
 
     sgd.plot_sgd_errors(errors, title)
 
-def neural_classification(data, epochs=600, mini_batch_size=10):
+def neural_classification(data, epochs=5000, mini_batch_size=10):
 
     total_steps = epochs * len(data['x_train'])//mini_batch_size
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10000).compile(total_steps) for base, decay in [(1e-10, 1/5000)]]
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(100).compile(total_steps) for base, decay in [(1e-2, 1/2000)]]
 
     common_kwargs = {'momentum': 0.5}
-    subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.softmax, 'diff_activation': neural_model.softmax_diff}]}, {'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'diff_activation': neural_model.softmax_diff}]}] # , 'activation': neural_model.softmax, 'diff_activation': neural_model.softmax_diff
-    #subplot_uniques = [{'layers': [{'height': 64}, {'height': hidden}, {'height': 10}]} for hidden in np.power(2, np.arange(4,7))] # , 'activation': neural_model.softmax, 'diff_activation': neural_model.softmax_diff
-    #subsubplot_uniques = [{}]
+    subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]},
+                       {'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
+
     subsubplot_uniques = [{'learning_rate': learning_rate} for learning_rate in learning_rates]
-    #subsubplot_uniques = [{'learning_rate': learning_rate, 'momentum': momentum} for learning_rate in np.logspace(-10, -6, 2) for momentum in [0., 0.4]]
 
     unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
 
@@ -209,11 +209,11 @@ def neural_classification(data, epochs=600, mini_batch_size=10):
 
     subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(neural_models, unique_sgd_kwargs*len(neural_models))]
 
-    errors, subtitle, subplots = sgd.sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=epochs)
+    errors, subtitle, subplots, metric_string = sgd.sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=epochs, metric=metrics.cross_entropy)
 
     title = ['Neural model, Classification test', 'neural_classification', subtitle]
 
-    sgd.plot_sgd_errors(errors, title)
+    sgd.plot_sgd_errors(errors, title, metric_string)
 
     classification_accuracy(subplots, data)
 
@@ -222,7 +222,8 @@ def classification_accuracy(subplots, data):
     from sklearn.metrics import classification_report, confusion_matrix
 
     best_models = []
-    for j, models in enumerate(subplots[:, 0]):
+    all_models = [models for models, _ in subplots]
+    for j, models in enumerate(all_models):
         model_scores = []
         for k, model in enumerate(models):
             predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
@@ -232,15 +233,16 @@ def classification_accuracy(subplots, data):
         max_score = max(model_scores)
         best_models.append([j, model_scores.index(max_score)])
 
+
     for index in best_models:
-        model = subplots[index[0], index[1]]
+        model = all_models[index[0]][index[1]]
         predict_train = np.argmax(model.predict(data['x_train']), axis=1)
         predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
         predict_test = np.argmax(model.predict(data['x_test']), axis=1)
 
-        true_train = np.where(mnistData['y_train'] == 1)
-        true_val = np.where(mnistData['y_validate'] == 1)
-        true_test = np.where(mnistData['y_test'] == 1)
+        true_train = np.where(mnistData['y_train'] == 1)[1]
+        true_val = np.where(mnistData['y_validate'] == 1)[1]
+        true_test = np.where(mnistData['y_test'] == 1)[1]
 
         print("Training report ", model.name)
         print(classification_report(true_val, predict_val))
@@ -292,7 +294,6 @@ if __name__ == '__main__':
         neural_regression(terrainData)
     if 'neural' in sys.argv and 'class' in sys.argv:
         neural_classification(mnistData)
-
     if 'betas' in sys.argv:
         beta_variance(terrainData)
     if 'compare' in sys.argv and 'reg' in sys.argv:
