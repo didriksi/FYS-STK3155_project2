@@ -23,7 +23,7 @@ class Learning_rate:
             self.parameters['decay'] = decay
             self.function = lambda step: base/(1 + step * decay)
 
-        self.name = self.function.__doc__ or ' '.join([f"{key}:{value:.2f}" for key, value in self.parameters.items()])
+        self.name = self.function.__doc__ or ' '.join([f"{key}:{f'{value:.2e}' if isinstance(value, float) else value}" for key, value in self.parameters.items()])
 
         if 'name' in kwargs:
             self.name = kwargs['name']
