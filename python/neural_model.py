@@ -133,14 +133,14 @@ class Output(Dense):
                 Differentiation of activation function.
     cost_diff:  array of floats -> array of floats
                 Differentiation of cost function.
-    d_func:     (a, y) -> cost
+    d_func:     (a, y, z) -> cost
                 Cost function, wih regards to z. Overwrites diff_activation and cost_diff.
     """
     def __init__(self, height, activation=sigmoid, diff_activation=sigmoid_diff, cost_diff=MSE_diff, d_func=None):
         if d_func is None:
             super().__init__(height, activation=activation, diff_activation=diff_activation)
             self.cost_diff = cost_diff
-            self.d_func = lambda y: self.cost_diff(self.a, y) * self.diff_activation(self.z)
+            self.d_func = lambda a, y, z: self.cost_diff(a, y) * self.diff_activation(z)
         else:
             super().__init__(height, activation=activation, diff_activation=None)
             self.cost_diff = None
@@ -154,7 +154,7 @@ class Output(Dense):
         y:          array of floats
                     Optimal output.
         """
-        self.d = self.d_func(y)
+        self.d = self.d_func(self.a, y, self.z)
 
 
 class Network:
