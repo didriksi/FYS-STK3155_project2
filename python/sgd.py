@@ -46,7 +46,7 @@ def sgd(model, x_train, x_test, y_train, y_test, epochs=200, epochs_without_prog
     errors = np.zeros((model.parallell_runs, epochs))
 
     for epoch in range(epochs):
-        errors[:,epoch] = metric(model.predict(x_test), y_test)
+        errors[:,epoch] = metric(y_test, model.predict(x_test))
         if epoch % epochs_without_progress == 0 and epoch >= epochs_without_progress:
             if epoch == epochs_without_progress:
                 prev_error = np.mean(errors[:,epoch-epochs_without_progress:epoch])
@@ -156,9 +156,12 @@ def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
     errors_df.to_csv('../dataframes/errors.csv')
 
     print("")
-    return errors_df, plot_title, subplots
 
-def plot_sgd_errors(sgd_errors_df, title):
+    metric_string = metrics.MSE.__doc__ if kwargs['metric'] is None else kwargs['metric'].__doc__
+
+    return errors_df, plot_title, subplots, metric_string
+
+def plot_sgd_errors(sgd_errors_df, title, metric_string='MSE'):
     """Takes a dataframe of errors, and formats it in a way that plotting.side_by_side can handle.
 
     Parameters:
@@ -188,7 +191,7 @@ def plot_sgd_errors(sgd_errors_df, title):
 
     side_by_side_parameters  = {
         'plotter': plotting.confidence_interval_plotter,
-        'axis_labels': ('Epoch', 'MSE'),
+        'axis_labels': ('Epoch', metric_string),
         'title': title,
         'yscale': 'log',
     }
