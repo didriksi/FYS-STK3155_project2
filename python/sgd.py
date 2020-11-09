@@ -59,7 +59,7 @@ def sgd(model, x_train, x_test, y_train, y_test, epochs=200, epochs_without_prog
                 prev_error = current_error
 
         np.random.shuffle(indexes)
-        mini_batches = indexes.reshape(-1, mini_batch_size)
+        mini_batches = indexes[:-(data_size%mini_batch_size)].reshape(-1, mini_batch_size)
         for mini_batch in mini_batches:
             y_tilde = model.predict(x_train[mini_batch])
             model.update_parameters(x_train[mini_batch], y_train[mini_batch], y_tilde)
