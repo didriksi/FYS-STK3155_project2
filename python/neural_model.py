@@ -243,6 +243,10 @@ class Network:
         self.feed_forward(x)
         return self.network[-1].a
 
+    def class_predict(self, x):
+        pred = self.predict(x)
+        return np.argmax(pred, axis=1)
+
     def update_parameters(self, x, optimal_output, ytilde):
         """Propagates the error back through the network, and steps in a direction of less loss.
         
