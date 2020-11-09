@@ -163,7 +163,7 @@ def neural_regression(data, mini_batch_size=20, epochs=6000, epochs_without_prog
     total_steps = epochs * len(data['x_train'])//mini_batch_size
     learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(1e-4, 1/5000), (5e-3, 1/2500), (1e-3, 1/2000)]]
 
-    common_kwargs = {'momentum': 0.6}
+    common_kwargs = {'momentum': 0.5}
     hidden_layers_sets = [[{'height': hidden}] for hidden in [2, 4, 6]] + [[{'height': 2}, {'height': 2}]]
     subplot_uniques = [{'layers': [{'height': 2}, *hidden_layers, {'height': 1, 'activation': lambda x: x, 'diff_activation': lambda x: 1}]} for hidden_layers in hidden_layers_sets]
     subsubplot_uniques = [{'learning_rate': learning_rate_func} for learning_rate_func in learning_rates]
@@ -219,15 +219,15 @@ def neural_regression_2(data, mini_batch_size=20, epochs=6000, epochs_without_pr
 def neural_classification(data, epochs=50000, epochs_without_progress=1000, mini_batch_size=10):
 
     total_steps = epochs * len(data['x_train'])//mini_batch_size
-    # learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(100).compile(total_steps) for base, decay in [(9e-4, 1/4000)]]
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(100).compile(total_steps) for base, decay in [(9e-4, 1/4000)]]
 
-    # common_kwargs = {'momentum': 0.6}
-    # subplot_uniques = [{'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
+    common_kwargs = {'momentum': 0.6}
+    subplot_uniques = [{'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
 
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(2e-3, 1/40000)]]
+    # learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(2e-3, 1/40000)]]
 
-    common_kwargs = {'momentum': 0.7}
-    subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
+    # common_kwargs = {'momentum': 0.7}
+    # subplot_uniques = [{'name':  'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
 
     subsubplot_uniques = [{'learning_rate': learning_rate} for learning_rate in learning_rates]
 
@@ -253,33 +253,44 @@ def neural_classification(data, epochs=50000, epochs_without_progress=1000, mini
 
 
 def classification_accuracy(subplots, data):
-    from sklearn.metrics import classification_report, confusion_matrix
+    from sklearn.metrics import classification_report, confusion_matrix, plot_confusion_matrix
+    import matplotlib.pyplot as plt
+    import seaborn as sns
 
     best_models = []
+
     all_models = [models for models, _ in subplots]
+    true_train = np.where(mnistData['y_train'] == 1)[1]
+    true_val = np.where(mnistData['y_validate'] == 1)[1]
+    true_test = np.where(mnistData['y_test'] == 1)[1]
     for j, models in enumerate(all_models):
         model_scores = []
+
         for k, model in enumerate(models):
             predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
-            true_val = np.where(mnistData['y_validate'] == 1)
+
             accuracy = np.mean(predict_val == true_val)
             model_scores.append(accuracy)
         max_score = max(model_scores)
-        best_models.append([j, model_scores.index(max_score)])
 
+
+        best_models.append([j, model_scores.index(max_score)])
 
     for index in best_models:
         model = all_models[index[0]][index[1]]
-        predict_train = np.argmax(model.predict(data['x_train']), axis=1)
-        predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
-        predict_test = np.argmax(model.predict(data['x_test']), axis=1)
+        predict_train = model.class_predict(data['x_train'])
+        predict_val = model.class_predict(data['x_validate'])
+        predict_test = model.class_predict(data['x_test'])
 
-        true_train = np.where(mnistData['y_train'] == 1)[1]
-        true_val = np.where(mnistData['y_validate'] == 1)[1]
-        true_test = np.where(mnistData['y_test'] == 1)[1]
-
-        print("Training report", model.name)
+        print("Model assessment - test data", model.name)
         print(classification_report(true_test, predict_test))
+        print("Model assessment - validation data")
+        print(classification_report(true_val, predict_val))
+        plt.close()
+        cf = confusion_matrix(true_test, predict_test)
+        sns.heatmap(cf, annot=True)
+        plt.title(f"Confusion matrix - {model.name} with {len(data['x_validate'])} samples")
+        plt.savefig(f"classification_cf_{model.name}")
 
 
 
@@ -319,7 +330,7 @@ if __name__ == '__main__':
 
     terrainData = real_terrain.get_data(20)
     mnistData = mnist.get_data(0.6, 0.2)
-
+    neural_classification(mnistData)
     if 'conf' in sys.argv:
         conf_interval_plot(terrainData)
     if 'momentum' in sys.argv:
