@@ -287,10 +287,11 @@ def classification_accuracy(subplots, data):
         print("Model assessment - validation data")
         print(classification_report(true_val, predict_val))
         plt.close()
-        cf = confusion_matrix(true_test, predict_test)
+        cf = confusion_matrix(true_val, predict_val)
         sns.heatmap(cf, annot=True)
-        plt.title(f"Confusion matrix - {model.name} with {len(data['x_validate'])} samples")
-        plt.savefig(f"classification_cf_{model.name}")
+        plt.title(f"Confusion matrix - {model.name} \n {len(data['x_validate'])} samples of validation data")
+        plt.savefig(f"../plots/classification_cf_{model.name}")
+
 
 
 
