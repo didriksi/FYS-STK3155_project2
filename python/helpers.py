@@ -128,9 +128,9 @@ def classification_accuracy(subplots, data):
     best_models = []
 
     all_models = [models for models, _ in subplots]
-    true_train = np.where(mnistData['y_train'] == 1)[1]
-    true_val = np.where(mnistData['y_validate'] == 1)[1]
-    true_test = np.where(mnistData['y_test'] == 1)[1]
+    true_train = np.where(data['y_train'] == 1)[1]
+    true_val = np.where(data['y_validate'] == 1)[1]
+    true_test = np.where(data['y_test'] == 1)[1]
     for j, models in enumerate(all_models):
         model_scores = []
 
