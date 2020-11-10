@@ -14,7 +14,6 @@ def conf_interval_plot(data, epochs=300):
     X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
     X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
 
-
     common_ols_kwargs = {'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
     common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
     subplot_ols_uniques = [{}]
@@ -132,7 +131,7 @@ def beta_variance(data, epochs=20000, mini_batch_sizes=[10, 20]):
     }
     plotting.side_by_side(*plots, **side_by_side_parameters)
 
-def momemtun_plot(data):
+def momentun_plot(data):
     polynomials = 8
     X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
     X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
@@ -216,7 +215,7 @@ def neural_regression_2(data, mini_batch_size=20, epochs=6000, epochs_without_pr
 
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
-def neural_classification(data, epochs=10000, epochs_without_progress=2000, mini_batch_size=40):
+def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_batch_size=40):
     total_steps = epochs * len(data['x_train'])//mini_batch_size
 
     learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(3e-3, 1/40000), (2e-3, 1/30000), (5e-3, 1/20000)]]
@@ -308,21 +307,24 @@ if __name__ == '__main__':
 
     terrainData = real_terrain.get_data(20)
     mnistData = mnist.get_data(0.6, 0.2)
-    neural_classification(mnistData)
-    if 'conf' in sys.argv:
-        conf_interval_plot(terrainData)
-    if 'momentum' in sys.argv:
-        momemtun_plot(terrainData)
-    if 'neural' in sys.argv and 'reg' in sys.argv:
-        neural_regression(terrainData)
-        #neural_regression_2(terrainData)
-    if 'neural' in sys.argv and 'class' in sys.argv:
-        neural_classification(mnistData)
-    if 'betas' in sys.argv:
-        beta_variance(terrainData)
-    if 'compare' in sys.argv and 'reg' in sys.argv:
-        regression_compare(terrainData)
-    if 'neural_tune' in sys.argv:
-        tune_neural_reg(terrainData)
+    
+    functions = {
+        'conf': (conf_interval_plot, terrainData),
+        'momentum': (momentum_plot, terrainData),
+        'beta_variance': (beta_variance, terrainData),
+        'neural_reg_tune': (tune_neural_reg, terrainData)
+        'neural_reg': (neural_regression, terrainData),
+        'compare_reg': (regression_compare, terrainData),
+        'mnist': (mnist_classification, mnistData)        
+    }
 
-
+    if 'all' in sys.argv:
+        for name, (f, data) in functions.items():
+            print(f"Performing {name}...")
+            f(data)
+    else:
+        for arg in sys.argv[1:]:
+            if arg in functions:
+                f, data = functions[arg]
+                print(f"Performing {name}...")
+                f(data)
