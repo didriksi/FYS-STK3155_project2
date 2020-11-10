@@ -1,5 +1,7 @@
 import numpy as np
 from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def filter_dicts(dicts):
     """Splits list of dictionaries into what is common, and what is unique with them.
@@ -121,10 +123,6 @@ def make_models(model_class, common_kwargs, subplot_uniques, subplot_copies, sub
     return models
 
 def classification_accuracy(subplots, data):
-    from sklearn.metrics import classification_report, confusion_matrix, plot_confusion_matrix
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-
     best_models = []
 
     all_models = [models for models, _ in subplots]
@@ -154,8 +152,8 @@ def classification_accuracy(subplots, data):
         print(classification_report(true_test, predict_test))
         print("Model assessment - validation data")
         print(classification_report(true_val, predict_val))
-        plt.close()
         cf = confusion_matrix(true_val, predict_val)
         sns.heatmap(cf, annot=True)
         plt.title(f"Confusion matrix - {model.name} \n {len(data['x_validate'])} samples of validation data")
         plt.savefig(f"../plots/classification_cf_{model.name}")
+        plt.clf()
