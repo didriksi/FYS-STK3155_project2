@@ -27,7 +27,7 @@ def sgd(model, x_train, x_test, y_train, y_test, epochs=200, epochs_without_prog
     y_test:     array of shape (n, )
                 Array with target data used to test the model, and calculate error.
     epochs:     int
-                Number of epochs. 50 by default.
+                Number of epochs. 200 by default.
     mini_batch_size:
                 int
                 Size of mini-batches. 1 by default.
@@ -59,7 +59,7 @@ def sgd(model, x_train, x_test, y_train, y_test, epochs=200, epochs_without_prog
                 prev_error = current_error
 
         np.random.shuffle(indexes)
-        mini_batches = indexes[:-(data_size%mini_batch_size)].reshape(-1, mini_batch_size)
+        mini_batches = indexes.reshape(-1, mini_batch_size)
         for mini_batch in mini_batches:
             y_tilde = model.predict(x_train[mini_batch])
             model.update_parameters(x_train[mini_batch], y_train[mini_batch], y_tilde)
@@ -158,7 +158,6 @@ def sgd_on_models(x_train, x_test, y_train, y_test, *subplots, **sgd_kwargs):
     print("")
 
     metric_string = metrics.MSE.__doc__ if 'metric' not in sgd_kwargs else sgd_kwargs['metric'].__doc__
-
 
     return errors_df, plot_title, subplots, metric_string
 
