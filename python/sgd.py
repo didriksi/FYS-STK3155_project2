@@ -45,6 +45,8 @@ def sgd(model, x_train, x_test, y_train, y_test, epochs=200, epochs_without_prog
     indexes = np.arange(data_size)
     errors = np.zeros((model.parallell_runs, epochs))
 
+    last_index = data_size//mini_batch_size * mini_batch_size
+
     for epoch in range(epochs):
         errors[:,epoch] = metric(y_test, model.predict(x_test))
         if epoch % epochs_without_progress == 0 and epoch >= epochs_without_progress:
@@ -59,7 +61,7 @@ def sgd(model, x_train, x_test, y_train, y_test, epochs=200, epochs_without_prog
                 prev_error = current_error
 
         np.random.shuffle(indexes)
-        mini_batches = indexes.reshape(-1, mini_batch_size)
+        mini_batches = indexes[:last_index].reshape(-1, mini_batch_size)
         for mini_batch in mini_batches:
             y_tilde = model.predict(x_train[mini_batch])
             model.update_parameters(x_train[mini_batch], y_train[mini_batch], y_tilde)
