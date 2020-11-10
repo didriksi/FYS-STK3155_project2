@@ -224,17 +224,15 @@ def neural_classification(data, epochs=10000, epochs_without_progress=1000, mini
     common_kwargs = {'momentum': 0.6}
     subplot_uniques = [{'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
 
-<<<<<<< HEAD
     learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(7e-3, 1/40000)]]
 
     common_kwargs = {'momentum': 0.5}
     subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]}]
-=======
+
     # learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(2e-3, 1/40000)]]
 
     # common_kwargs = {'momentum': 0.7}
     # subplot_uniques = [{'name':  'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
->>>>>>> f943aba2a1b3b4959c41a3da5d02f4f78274e73d
 
     subsubplot_uniques = [{'learning_rate': learning_rate} for learning_rate in learning_rates]
 
@@ -256,10 +254,7 @@ def neural_classification(data, epochs=10000, epochs_without_progress=1000, mini
 
     sgd.plot_sgd_errors(errors, title, metric_string)
 
-<<<<<<< HEAD
     helpers.classification_accuracy(subplots, data)
-=======
-    classification_accuracy(subplots, data)
 
 
 def classification_accuracy(subplots, data):
@@ -301,10 +296,6 @@ def classification_accuracy(subplots, data):
         sns.heatmap(cf, annot=True)
         plt.title(f"Confusion matrix - {model.name} \n {len(data['x_validate'])} samples of validation data")
         plt.savefig(f"../plots/classification_cf_{model.name}")
-
-
-
->>>>>>> f943aba2a1b3b4959c41a3da5d02f4f78274e73d
 
 def regression_compare(data, epochs=6000, epochs_without_progress=300, mini_batch_size=20):
     polynomials = 8
