@@ -1,3 +1,6 @@
+import numpy as np
+from sklearn.metrics import classification_report, confusion_matrix
+
 def filter_dicts(dicts):
     """Splits list of dictionaries into what is common, and what is unique with them.
 
@@ -39,6 +42,17 @@ def filter_dicts(dicts):
                 for dict_to_filter in dicts:
                     del dict_to_filter[unique_key]
     return dicts, common
+
+def listify_dict_values(dicts):
+    key_values = {}
+    for dictionary in dicts:
+        for key, value in dictionary.items():
+            if key in key_values:
+                if value not in key_values[key]:
+                    key_values[key].append(value)
+            else:
+                key_values[key] = [value]
+    return key_values
 
 def textify_dict(dictionary):
     """Takes in a dictionary, and makes it into a relatively tidy string.
@@ -105,3 +119,30 @@ def make_models(model_class, common_kwargs, subplot_uniques, subplot_copies, sub
                 subplot_models.append(model_class(**subsubplot_kwargs))
             models.append(subplot_models)
     return models
+
+def classification_accuracy(subplots, data):
+    best_models = []
+    all_models = [models for models, _ in subplots]
+    for j, models in enumerate(all_models):
+        model_scores = []
+        for k, model in enumerate(models):
+            predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
+            true_val = np.where(mnistData['y_validate'] == 1)
+            accuracy = np.mean(predict_val == true_val)
+            model_scores.append(accuracy)
+        max_score = max(model_scores)
+        best_models.append([j, model_scores.index(max_score)])
+
+
+    for index in best_models:
+        model = all_models[index[0]][index[1]]
+        predict_train = np.argmax(model.predict(data['x_train']), axis=1)
+        predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
+        predict_test = np.argmax(model.predict(data['x_test']), axis=1)
+
+        true_train = np.where(mnistData['y_train'] == 1)[1]
+        true_val = np.where(mnistData['y_validate'] == 1)[1]
+        true_test = np.where(mnistData['y_test'] == 1)[1]
+
+        print("Training report", model.name)
+        print(classification_report(true_test, predict_test))
