@@ -1,39 +1,19 @@
 import sys
 import numpy as np
 import pandas as pd
+import itertools
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 
 import linear_models
 import resampling
 import metrics
 import plotting
+import sgd
+import helpers
 
 np.random.seed(10)
-
-def poly_design_matrix(p, x):
-    """Make a design matrix where each column is a combination of the input x's data columns to powers up to p.
-
-    Parameters:
-    -----------
-    p:          int
-                Maximum polynomial degree of columns.
-    x:          array of shape (n, f)
-                Predictor variable, with each row being one datapoint.
-
-    Returns:
-    --------
-    X:          2-dimensional array
-                Design matrix with rows as data points and columns as features.
-    """
-    powers = np.arange(p+1)[np.newaxis,:].repeat(x.shape[1], axis=0)
-    # Make a (p+1)**x.shape[0] x 2 matrix with pairs of power combinations
-    pow_combs = np.array(np.meshgrid(*powers)).T.reshape(-1, x.shape[1])
-    # Remove all combinations with combined powers of over p
-    pow_combs = pow_combs[np.sum(pow_combs, axis=1) <= p]
-    # Make third order tensor where last dimension is used for each input dimension to its appropriate power
-    X_powers = x[:,:,np.newaxis].astype(float).repeat(p+1, axis=2)**powers
-    # Multiply the powers of X together according to pow_combs
-    X = X_powers[:,0,pow_combs[:,0]] * X_powers[:,1,pow_combs[:,1]]
-    return X
 
 class Tune:
     """Validates, finds optimal hyperparameters, and tests them.
@@ -53,14 +33,18 @@ class Tune:
     verbose:    int
                 How much to print out during validation, with 0 being nothing, and 2 being evrything.
     """
-    def __init__(self, models, data, poly_iter, para_iters, name="", verbose=1):
+    def __init__(self, models, data, _metrics, polynomials=8, name="Tune", verbose=1):
         self.models = models
-        self.poly_iter = poly_iter
-        self.para_iters = para_iters
         self.verbose = verbose
         self.data = data
+        self.polynomials = polynomials
+        self._metrics = _metrics
+        self.name = name
 
-    def validate(self, test_as_well=False):
+        for metric in _metrics:
+            assert metric.__doc__ is not None, "Metrics need docstrings"
+
+    def validate(self, epochs=200, **kwargs):
         """Validates all models for all polynomials and all parameters, and stores data in validation_errors.
 
         Creates and populates pandas.DataFrame validation_errors with MSE from bootstrap and kfold resampling techniques,
@@ -68,138 +52,102 @@ class Tune:
 
         Parameters:
         -----------
-        test_as_well:
-                    bool
-                    If True, test all models on test set as well, and store results
+        epochs:     int
+                    Number of epochs. 200 by default.
+        **kwargs:   keyword arguments
+                    Passed to sgd.sgd
         """
-        # Make dataframe for validation data
-        lambda_list = np.unique(np.concatenate(self.para_iters)) if len(self.para_iters) > 1 else self.para_iters[0]
-        validation_index = pd.MultiIndex.from_product([
-            ['Boot MSE', 'Boot Bias', 'Boot Var', 'Kfold MSE', 'Test MSE'],
-            [model.name for model in self.models],
-            [_lambda for _lambda in lambda_list]],
-            names = ['Metric', 'Model', 'Lambda']
-            )
-        self.validation_errors = pd.DataFrame(dtype=float, index=validation_index, columns=self.poly_iter)
-        self.validation_errors.sort_index(inplace=True)
+        model_properties = [model.property_dict for model in self.models]
+        model_uniques, model_common = helpers.filter_dicts(model_properties)
 
-        for i, p in enumerate(self.poly_iter):
-            if self.verbose >= 1:
-                print(f"{(i+1):2d}/{len(poly_iter)}: Polynomial of degree {p}")
+        for unique in model_uniques:
+            assert len(unique) == len(model_uniques[0]), "All models must have the same property types"
+            assert len(unique) > 0, "Two models with the same property_dict has been sent in"
 
-            X_train_validate = poly_design_matrix(p, self.data['x_train_validate'])
-            X_train, X_validate = np.split(X_train_validate, [self.data['x_train'].shape[0]])
+        index_parameters = helpers.listify_dict_values(model_uniques)
+        parameter_names = [key for key in index_parameters]
+        model_parameters = [values for _, values in index_parameters.items()]
+        metric_texts = [metric.__doc__ for metric in self._metrics]
 
-            for j, (model, para_iter) in enumerate(zip(self.models, self.para_iters)):
-                if self.verbose >= 1:
-                    print(f"    {(j+1):2d}/{len(self.models)}: Model: {model.name}")
+        errors_index = pd.MultiIndex.from_product([metric_texts, *model_parameters], names = ['Metric', *parameter_names])
+        self.errors_df = pd.DataFrame(dtype=float, index=errors_index, columns=range(1, epochs+1))
 
-                for k, _lambda in enumerate(para_iter):
-                    if self.verbose >= 2:
-                        print(f"        {(k+1):2d}/{len(para_iter)}: Lambda = {_lambda}")
+        X_train = linear_models.poly_design_matrix(self.polynomials, self.data['x_train'])
+        X_validate = linear_models.poly_design_matrix(self.polynomials, self.data['x_validate'])
 
-                    model.set_lambda(_lambda)
-                    boot_mse, boot_bias, boot_var = resampling.bootstrap(model, X_train, X_validate, self.data['y_train'], self.data['y_validate'], R=50)
-                    kfold_mse = resampling.kfold(model, X_train_validate, self.data['y_train_validate'], n_folds=10)
+        y_train, y_validate = self.data['y_train'], self.data['y_validate']
 
-                    self.validation_errors.loc['Boot MSE', model.name, _lambda][p] = boot_mse
-                    self.validation_errors.loc['Boot Bias', model.name, _lambda][p] = boot_bias
-                    self.validation_errors.loc['Boot Var', model.name, _lambda][p] = boot_var
-                    self.validation_errors.loc['Kfold MSE', model.name, _lambda][p] = kfold_mse
+        idx = pd.IndexSlice
 
-                    if test_as_well:
-                        X_train_c = np.copy(X_train)
-
-                        model.scaler.fit(X_train_c[:,1:])
-                        X_train_c[:,1:] = model.scaler.transform(X_train_c[:,1:])
-                        model.set_lambda(_lambda)
-                        model.fit(X_train_c, self.data['y_train'])
-
-                        X_test = poly_design_matrix(p, self.data['x_test'])
-                        X_test[:,1:] = model.scaler.transform(X_test[:,1:])
-                        y_pred = model.predict(X_test)
-
-                        test_mse = metrics.MSE(data['y_test'], y_pred)
-                        self.validation_errors.loc['Test MSE', model.name, _lambda][p] = test_mse
-
-                    #if self.verbose >= 2:
-                        #print(f"         error: {(boot_mse+kfold_mse)/2}")
-
-        self.validation_errors.dropna(thresh=2, inplace=True)
-        #self.validation_errors.drop_duplicates(inplace=True)
-
-    def optimal_model_search(self):
-        """Uses validation_errors to find the best models.
-
-        Assumes pandas.DataFrame validation_errors has already been created by validate method, and makes a new dataframe.
-        optimal_model stores the absolute best combination of max polynomial and lambda for each model.
-        """
-        optimal_model_index = pd.MultiIndex.from_product([
-            [model.name for model in self.models],
-            ['Bootstrap', 'Kfold', 'Average']],
-            names= ['Model', 'Resampling technique']
-            )
-        self.optimal_model = pd.DataFrame(index=optimal_model_index, columns=['Lambda', 'Polynomial', 'Validation error', 'Test error'])
-
-        average_MSE = (self.validation_errors.loc['Boot MSE'] + self.validation_errors.loc['Kfold MSE'])/2
-        
-        for model in self.models:
-            self.optimal_model.loc[model.name, 'Bootstrap']['Lambda', 'Polynomial'] = self.validation_errors.loc['Boot MSE', model.name].stack().idxmin()
-            self.optimal_model.loc[model.name, 'Kfold']['Lambda', 'Polynomial'] = self.validation_errors.loc['Kfold MSE', model.name].stack().idxmin()
-            self.optimal_model.loc[model.name, 'Average']['Lambda', 'Polynomial'] = average_MSE.loc[model.name].stack().idxmin()
+        for i, (model, model_unique) in enumerate(zip(self.models, model_uniques)):
+            print(f"\r |{'='*(i*50//len(self.models))}{' '*(50-i*50//len(self.models))}| {i/len(self.models):.2%}", end="", flush=True)
             
-            self.optimal_model.loc[model.name, 'Bootstrap']['Validation error'] = self.validation_errors.loc['Boot MSE', model.name].stack().min()
-            self.optimal_model.loc[model.name, 'Kfold']['Validation error'] = self.validation_errors.loc['Kfold MSE', model.name].stack().min()
-            self.optimal_model.loc[model.name, 'Average']['Validation error'] = average_MSE.loc[model.name].stack().min()
+            if model.name == 'OLS' or model.name == 'Ridge':
+                x_train, x_validate = X_train, X_validate
+            else:
+                x_train, x_validate = self.data['x_train'], self.data['x_validate']
 
-    def test(self):
-        """Tests out the models that validate and optimal_model_search has determined are best.
+            model_indexes = [model_unique[key] for key in index_parameters]
 
-        Uses the pandas.DataFrame optimal_model created by optimal_model_search method, and tests each of the models
-        on testing data. Plots the result side by side with the actual dependent variable.
+            for j, metric in enumerate(self._metrics):
+                model.compile()
+                errors, = sgd.sgd(model, x_train, x_validate, y_train, y_validate, epochs=epochs, metric=metric, **kwargs)[1]
+                self.errors_df.loc[tuple(pd.IndexSlice[s] for s in [metric.__doc__, *model_indexes])] = errors
 
-        """
-        for (model_name, technique), (_lambda, poly, _, _) in self.optimal_model.iterrows():
+        print("")
 
-            for _model in self.models:
-                if _model.name == model_name:
-                    model = _model
+        self.errors_df.dropna(thresh=2, inplace=True)
+        self.errors_df.to_csv("../dataframes/tune.csv")
 
-            X = poly_design_matrix(int(poly), self.data['x_train'])
 
-            model.scaler.fit(X[:,1:])
-            X[:,1:] = model.scaler.transform(X[:,1:])
-            model.set_lambda(_lambda)
-            model.fit(X, self.data['y_train'])
+    def plot_validation_errors(self):
+        """Plots heatmaps of validation errors for last epoch.
 
-            X_test = poly_design_matrix(int(poly), self.data['x_test'])
-            X_test[:,1:] = model.scaler.transform(X_test[:,1:])
-            y_pred = model.predict(X_test)
+        Makes one plot for each combination of two factors, for each metric."""
+        index = self.errors_df.index
+        names = index.names
 
-            mse = metrics.MSE(data['y_test'], y_pred)
-            self.optimal_model.loc[model_name, technique]['Test error'] = mse
+        for metric in self._metrics:
+            for i in range(1, len(names)):
+                for j in range(i+1, len(names)):
+                    
+                    x_label = names[j]
+                    y_label = names[i]
+                    x_indexes = index.get_level_values(x_label)
+                    y_indexes = index.get_level_values(y_label)
 
-            if self.verbose >= 1:
-                print(f"MSE: {mse} for poly = {poly} and lambda = {_lambda} with model {model_name}.")
-            
-            plotting.side_by_side(
-                ['Predicted', self.data['x_test'], y_pred],
-                ['Ground truth', self.data['x_test'], self.data['y_test']],
-                title=f"Test: {model.name}, $p$={poly}, $\\lambda$={_lambda}, best according to {technique}",
-                filename=f"{name}_test_{model.name}_p{poly}{[f'_lambda{_lambda}', ''][int(_lambda==0)]}")
+                    heatmap_df = self.errors_df.loc[metric.__doc__].iloc(axis=1)[-1].copy()
+                    remove_levels = np.ones(len(names), dtype=bool)
+                    remove_levels[np.array([0,i,j])] = False
+                    if np.nonzero(remove_levels == True)[0] > 0:
+                        for k in np.nonzero(remove_levels == True):
+                            heatmap_df = heatmap_df.mean(level=k)
 
-    def save(self):
-        """Saves dataframes created by .validation and .optimal_model_search to csv files.
-        """
-        if 'validation_errors' in self.__dict__:
-            self.validation_errors.to_csv(f'../dataframe/{name}_validation_errors.csv')
-        if 'optimal_per_poly' in self.__dict__:
-            self.optimal_per_poly.to_csv(f'../dataframe/{name}_optimal_per_poly.csv')
-        if 'optimal_model' in self.__dict__:
-            self.optimal_model.to_csv(f'../dataframe/{name}_optimal_model.csv')
+                    heatmap_values = heatmap_df.values
 
-            header = ["Lambda", "Poly", "Validation", "Test"]
-            index = ["Model", "Technique"]
-            self.optimal_model.to_latex(f'../dataframe/{name}_optimal_model.tex', header=header, index=index, multirow=True, float_format="{:0.3e}".format)
+                    heatmap_df = self.errors_df.loc[metric.__doc__].iloc(axis=1)[-1].groupby(level=[names[i], names[j]]).mean()
+                    x_ticks = heatmap_df.index.get_level_values(x_label)
+                    y_ticks = heatmap_df.index.get_level_values(y_label)
+                    heatmap_values = heatmap_df.unstack().values
 
+                    f, ax = plt.subplots(figsize=(9, 6))
+
+                    filename = f"{self.name.replace(' ', '_')}_{names[i]}_vs_{names[j]}_{metric.__doc__}"
+                    title = f"{self.name}: {names[i]} vs {names[j]} ({metric.__doc__})"
+
+                    plt.title(title)
+                    (min_y, ), (min_x, ) = np.nonzero(heatmap_values == np.amin(heatmap_values))
+                    ax.add_patch(Rectangle((min_x, min_y), 1, 1, fill=False, edgecolor='pink', lw=3))
+                    ax = sns.heatmap(heatmap_values,
+                                     cbar=False,
+                                     annot=True,
+                                     square=True,
+                                     yticklabels=np.unique(y_ticks),
+                                     xticklabels=np.unique(x_ticks),
+                                     fmt='3.3f')
+                    plt.yticks(rotation=45)
+                    plt.ylabel(y_label)
+                    plt.xlabel(x_label)
+                    plt.savefig(f"../plots/{filename}")
+                    plt.show()
 
