@@ -99,6 +99,10 @@ class Network:
         self.feed_forward(x)
         return self.network[-1].a
 
+    def class_predict(self, x):
+         pred = self.predict(x)
+         return np.argmax(pred, axis=1)
+
     def update_parameters(self, x, optimal_output, ytilde):
         """Propagates the error back through the network, and steps in a direction of less loss.
         
@@ -264,8 +268,26 @@ def ReLu(z):
 def ReLu_diff(z):
     return np.where(z > 0, 1, 0)
 
+<<<<<<< HEAD
 def leaky_ReLu(z):
     return np.where(z > 0, z, z * 0.01) 
+=======
+    def class_predict(self, x):
+        pred = self.predict(x)
+        return np.argmax(pred, axis=1)
+
+    def update_parameters(self, x, optimal_output, ytilde):
+        """Propagates the error back through the network, and steps in a direction of less loss.
+        
+        Parameters:
+        -----------
+        x:          for compatibility with sgd
+        optimal_output:
+                    array of floats
+                    Optimal or desired output values. Must have same shape as output layer.
+        y:          for compatibility with sgd
+        """
+>>>>>>> f943aba2a1b3b4959c41a3da5d02f4f78274e73d
 
 def leaky_ReLu_diff(z):
     return np.where(z > 0, 1, 0.01)

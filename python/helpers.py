@@ -121,28 +121,41 @@ def make_models(model_class, common_kwargs, subplot_uniques, subplot_copies, sub
     return models
 
 def classification_accuracy(subplots, data):
+    from sklearn.metrics import classification_report, confusion_matrix, plot_confusion_matrix
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
     best_models = []
+
     all_models = [models for models, _ in subplots]
+    true_train = np.where(mnistData['y_train'] == 1)[1]
+    true_val = np.where(mnistData['y_validate'] == 1)[1]
+    true_test = np.where(mnistData['y_test'] == 1)[1]
     for j, models in enumerate(all_models):
         model_scores = []
+
         for k, model in enumerate(models):
             predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
-            true_val = np.where(mnistData['y_validate'] == 1)
+
             accuracy = np.mean(predict_val == true_val)
             model_scores.append(accuracy)
         max_score = max(model_scores)
-        best_models.append([j, model_scores.index(max_score)])
 
+
+        best_models.append([j, model_scores.index(max_score)])
 
     for index in best_models:
         model = all_models[index[0]][index[1]]
-        predict_train = np.argmax(model.predict(data['x_train']), axis=1)
-        predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
-        predict_test = np.argmax(model.predict(data['x_test']), axis=1)
+        predict_train = model.class_predict(data['x_train'])
+        predict_val = model.class_predict(data['x_validate'])
+        predict_test = model.class_predict(data['x_test'])
 
-        true_train = np.where(mnistData['y_train'] == 1)[1]
-        true_val = np.where(mnistData['y_validate'] == 1)[1]
-        true_test = np.where(mnistData['y_test'] == 1)[1]
-
-        print("Training report", model.name)
+        print("Model assessment - test data", model.name)
         print(classification_report(true_test, predict_test))
+        print("Model assessment - validation data")
+        print(classification_report(true_val, predict_val))
+        plt.close()
+        cf = confusion_matrix(true_val, predict_val)
+        sns.heatmap(cf, annot=True)
+        plt.title(f"Confusion matrix - {model.name} \n {len(data['x_validate'])} samples of validation data")
+        plt.savefig(f"../plots/classification_cf_{model.name}")
