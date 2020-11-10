@@ -4,55 +4,6 @@ from sklearn.preprocessing import StandardScaler
 
 import metrics
 
-def beta_ridge(_lambda, X, y):
-    """Returns a beta with parameters fitted for some X and y, and _lambda hyperparameter. Method is Ridge.
-
-    Parameters:
-    -----------
-    _lambda:    float
-                Regularisation parameter.
-    X:          2-dimensional array
-                Design matrix with rows as data points and columns as features.
-    y:          1-dimensional array
-                Dependent variable.
-    
-    Returns:
-    --------
-    beta:       array
-                Array of parameters
-    """
-    U, s, VT = np.linalg.svd(X.T @ X + _lambda * np.eye(X.shape[1]))
-    D = np.zeros((U.shape[0], VT.shape[0])) + np.eye(VT.shape[0]) * np.append(s, np.zeros(VT.shape[0] - s.size))
-    invD = np.linalg.inv(D)
-    invTerm = VT.T @ np.linalg.inv(D) @ U.T
-    beta = invTerm @ X.T @ y
-    return beta
-
-def beta_lasso(_lambda, X, y):
-    """Returns a beta with parameters fitted for some X and y, and _lambda hyperparameter. Method is LASSO.
-
-    Parameters:
-    -----------
-    _lambda:    float
-                Regularisation parameter.
-    X:          2-dimensional array
-                Design matrix with rows as data points and columns as features.
-    y:          1-dimensional array
-                Dependent variable.
-    
-    Returns:
-    --------
-    beta:       array
-                Array of parameters
-    """
-    lasso = Lasso(alpha=_lambda, fit_intercept=False, max_iter=200000)
-    lasso.fit(X, y)
-    return lasso.coef_
-
-def beta_initialiser(shape):
-    """$3 \\cdot \\mathbb{N}(0,1)$"""
-    return 3*np.random.randn(*shape)
-
 class LinearRegression:
     """Fits on data, and makes some predictions based on linear regression.
 
@@ -107,7 +58,7 @@ class LinearRegression:
         y_pred = X @ self.beta
         return y_pred
 
-    def compile(self, x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=beta_initialiser):
+    def compile(self, x_shape=1, init_conds=1):
         """Prepares the model for training by gradient descent.
         
         Parameters:
@@ -123,11 +74,9 @@ class LinearRegression:
                     (tuple of ints -> array of shape of tuples)
                     Function that returns initial beta with shape decided by beta_shape. Default is standard normal.
         """
-        self.momentum = momentum
-        self.beta = beta_initialiser((x_shape, init_conds))
+        self.beta = self.beta_initialiser(self.beta.shape)
         self.velocity = np.zeros_like(self.beta)
         self.step = 0
-        self.learning_rate = learning_rate if callable(learning_rate) else lambda step: learning_rate
 
     def get_gradient(self, X, y, y_tilde):
         """Differentiates MSE for given data.
@@ -282,52 +231,80 @@ class RegularisedLinearRegression(LinearRegression):
         """
         raise NotImplementedError(f'Can only find confidence interval of beta from OLS, not {name}')
 
-def sigmoid(z):
-    return 1/(1 + np.exp(-z))
+def poly_design_matrix(p, x):
+    """Make a design matrix where each column is a combination of the input x's data columns to powers up to p.
 
-def sigmoid_diff(z):
-    return sigmoid(z)*(1-sigmoid(z))
+    Parameters:
+    -----------
+    p:          int
+                Maximum polynomial degree of columns.
+    x:          array of shape (n, f)
+                Predictor variable, with each row being one datapoint.
 
-class LogisticRegression(LinearRegression):
-    def __init__(self, name="Logistic", scaler=StandardScaler(), x_shape=1, init_conds=1, learning_rate=0.01, momentum=0, beta_initialiser=lambda shape: np.zeros(*shape)):
-        super.__init__(name=name, scaler=scaler, x_shape=x_shape, init_conds=init_conds, learning_rate=learning_rate, momentum=momentum, beta_initialiser=beta_initialiser)
+    Returns:
+    --------
+    X:          2-dimensional array
+                Design matrix with rows as data points and columns as features.
+    """
+    powers = np.arange(p+1)[np.newaxis,:].repeat(x.shape[1], axis=0)
+    # Make a (p+1)**x.shape[0] x 2 matrix with pairs of power combinations
+    pow_combs = np.array(np.meshgrid(*powers)).T.reshape(-1, x.shape[1])
+    # Remove all combinations with combined powers of over p
+    pow_combs = pow_combs[np.sum(pow_combs, axis=1) <= p]
+    # Make third order tensor where last dimension is used for each input dimension to its appropriate power
+    X_powers = x[:,:,np.newaxis].astype(float).repeat(p+1, axis=2)**powers
+    # Multiply the powers of X together according to pow_combs
+    X = X_powers[:,0,pow_combs[:,0]] * X_powers[:,1,pow_combs[:,1]]
+    return X
 
-    def predict(self, X):
-        """Predicts new dependent variable based on beta and a new design matrix X.
+def beta_ridge(_lambda, X, y):
+    """Returns a beta with parameters fitted for some X and y, and _lambda hyperparameter. Method is Ridge.
 
-        Parameters:
-        -----------
-        X:          2-dimensional array
-                    Design matrix with rows as data points and columns as features.
-        
-        Returns:
-        --------
-        y_pred:     1-dimensional array
-                    Predicted dependent variable.
-        """
-        y_pred = sigmoid(X @ self.beta)
-        return y_pred
+    Parameters:
+    -----------
+    _lambda:    float
+                Regularisation parameter.
+    X:          2-dimensional array
+                Design matrix with rows as data points and columns as features.
+    y:          1-dimensional array
+                Dependent variable.
+    
+    Returns:
+    --------
+    beta:       array
+                Array of parameters
+    """
+    U, s, VT = np.linalg.svd(X.T @ X + _lambda * np.eye(X.shape[1]))
+    D = np.zeros((U.shape[0], VT.shape[0])) + np.eye(VT.shape[0]) * np.append(s, np.zeros(VT.shape[0] - s.size))
+    invD = np.linalg.inv(D)
+    invTerm = VT.T @ np.linalg.inv(D) @ U.T
+    beta = invTerm @ X.T @ y
+    return beta
 
-    def get_gradient(self, X, y, y_tilde):
-        """Differentiates for given data, using cross-entropy.
-        
-        Parameters:
-        -----------
-        X:          2-dimensional array
-                    Design matrix with rows as data points and columns as features.
-        y:          1-dimensional array
-                    Actual dependent variable.
-        y_tilde:    1-dimensional array
-                    Predicted dependent variable.
+def beta_lasso(_lambda, X, y):
+    """Returns a beta with parameters fitted for some X and y, and _lambda hyperparameter. Method is LASSO.
 
-        Returns:
-        --------
-        gradient:   array
-                    Differentiated MSE.
+    Parameters:
+    -----------
+    _lambda:    float
+                Regularisation parameter.
+    X:          2-dimensional array
+                Design matrix with rows as data points and columns as features.
+    y:          1-dimensional array
+                Dependent variable.
+    
+    Returns:
+    --------
+    beta:       array
+                Array of parameters
+    """
+    lasso = Lasso(alpha=_lambda, fit_intercept=False, max_iter=200000)
+    lasso.fit(X, y)
+    return lasso.coef_
 
-        """
-        cross_entropy = -np.sum(y_tilde * np.log(y))
-        return cross_entropy
+def beta_initialiser(shape):
+    """$3 \\cdot \\mathbb{N}(0,1)$"""
+    return 3*np.random.randn(*shape)
 
 
 

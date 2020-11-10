@@ -1,40 +1,143 @@
 import numpy as np
 
-def sigmoid(z):
-    return 1/(1 + np.exp(-z))
+class Network:
+    """Network class that stores layers, and organises interactions between them
+    
+    Parameters:
+    -----------
+    learning_rate:
+                float
+                Learning rate for network, used during backpropagation. Should be between 0 and 1.
+    *layers:    keyword arguments used to construct layers
+                Assuming first layer is of type Input, last of type Output, and the one(s) in between Dense.
+    """
+    def __init__(self, layers=[], name="Neural", momentum=0, learning_rate=0.006):
+        self.name = name
+        self.learning_rate = learning_rate if callable(learning_rate) else lambda step: learning_rate
+        self.network = []
+        self.momentum = momentum
 
-def sigmoid_diff(z):
-    a = sigmoid(z)
-    return a*(1-a)
+        for i, layer in enumerate(layers):
+            if i == 0:
+                self.addLayer(Input(**layer))
+            elif i == len(layers) - 1:
+                self.addLayer(Output(**layer))
+                self.compile()
+            else:
+                self.addLayer(Dense(**layer))
 
-def ReLu(z):
-    return np.where(z > 0, z, 0)
+    @property
+    def property_dict(self):
+        properties = {'model_name': self.name,
+                      'momentum': self.momentum,
+                      'learning_rate': self.learning_rate_name,
+                      'layers': ', '.join([str(layer.height) for layer in self.network])
+                      }
+        return properties
 
-def ReLu_diff(z):
-    return np.where(z > 0, 1, 0)
+    @property
+    def learning_rate_name(self):
+        if callable(self.learning_rate):
+            if self.learning_rate.__doc__ is not None:
+                return self.learning_rate.__doc__
+            else:
+                return f"(0) {self.learning_rate(0)}"
+        else:
+            return f"flat {self.learning_rate}"
 
-def leaky_ReLu(z):
-    return np.where(z > 0, z, z * 0.01) 
+    @property
+    def parallell_runs(self):
+        return self.network[-1].height
 
-def leaky_ReLu_diff(z):
-    return np.where(z > 0, 1, 0.01)
+    def set_learning_rate(self, learning_rate):
+        self.learning_rate = learning_rate
 
-def linear(z):
-    return z
+    def addLayer(self, layer):
+        """Add a layer to network.
+        
+        Parameters:
+        -----------
+        layer:      subclass of Layer
+                    Layer to add to the end of this network.
+        """
+        self.network.append(layer)
 
-def linear_diff(z):
-    return np.ones(z.shape)
+    def compile(self, x1=None, x2=None, momentum=None):
+        """Compiles the network by initialising weights, and making the list of layers an array.
 
-def softmax(z):
-    e_z = np.exp(z - np.max(z))
-    return e_z / np.sum(e_z)
+        Also functions as a reset to random initial conditions.
+        """
+        self.step = 0
+        for i in range(1, len(self.network)):
+            self.network[i].set_prevLayer(self.network[i-1].height)
+        self.network = np.asarray(self.network)
 
-def softmax_diff(z):
-    grad = np.diag(z) - np.dot(z, z.T)
-    return grad
+    def feed_forward(self, input_neurons):
+        """Feeds forward through the network with a given input.
+        
+        Parameters:
+        -----------
+        input_neurons:
+                    array of floats
+                    Input values. Must have same shape as input layer.
+        """
+        self.network[0].a = input_neurons
 
-def MSE_diff(actualOutput, optimal_output):
-    return 2 * (optimal_output - actualOutput)
+        for i in range(1, len(self.network)):
+            self.network[i].feed_forward(self.network[i-1])
+
+    def predict(self, x):
+        """ Predicts on x
+
+        Parameters:
+        -----------
+        x:          array of floats
+
+        Returns:
+        prediction: array of prediction(s)
+        """
+        self.feed_forward(x)
+        return self.network[-1].a
+
+    def update_parameters(self, x, optimal_output, ytilde):
+        """Propagates the error back through the network, and steps in a direction of less loss.
+        
+        Parameters:
+        -----------
+        x:          for compatibility with sgd
+        optimal_output:
+                    array of floats
+                    Optimal or desired output values. Must have same shape as output layer.
+        y:          for compatibility with sgd
+        """
+
+        for i in reversed(range(1, len(self.network))):
+            if i == len(self.network) - 1:
+                backprop_data = optimal_output
+            else:
+                backprop_data = self.network[i+1]
+
+            self.network[i].back_propagate(backprop_data)
+
+            self.network[i].bias_velocity *= self.momentum
+            self.network[i].bias_velocity += self.learning_rate(self.step) * np.mean(self.network[i].d, axis=0)
+            self.network[i].bias += self.network[i].bias_velocity
+
+            self.network[i].weights_velocity *= self.momentum
+            self.network[i].weights_velocity += self.learning_rate(self.step) * 1/self.network[i-1].height * np.dot(self.network[i - 1].a.T, self.network[i].d)
+            self.network[i].weights += self.network[i].weights_velocity
+
+        self.step += 1
+
+    def __str__(self):
+        """Returns a printable string with all the networks biases and weights.
+        """
+        string = "Neural net\n"
+        for i in range(1, len(self.network)):
+            string += f"Layer {i}\n   Biases: {self.network[i].bias.shape}\n   Weights: {self.network[i].weights.shape}\n"
+            #string += f"delta_b = {self.network[i].delta_b.shape}\n delta_w: {self.network[i].delta_w.shape}"
+        return string
+
 
 class Layer:
     """Generic layer in neural network.
@@ -148,139 +251,41 @@ class Output(Dense):
         """
         self.d = self.d_func(self.a, y, self.z)
 
+def sigmoid(z):
+    return 1/(1 + np.exp(-z))
 
-class Network:
-    """Network class that stores layers, and organises interactions between them
-    
-    Parameters:
-    -----------
-    learning_rate:
-                float
-                Learning rate for network, used during backpropagation. Should be between 0 and 1.
-    *layers:    keyword arguments used to construct layers
-                Assuming first layer is of type Input, last of type Output, and the one(s) in between Dense.
-    """
-    def __init__(self, layers=[], name="Neural", momentum=0, learning_rate=0.006):
-        self.name = name
-        self.learning_rate = learning_rate if callable(learning_rate) else lambda step: learning_rate
-        self.network = []
-        self.momentum = momentum
-        self.step = 0
+def sigmoid_diff(z):
+    a = sigmoid(z)
+    return a*(1-a)
 
-        for i, layer in enumerate(layers):
-            if i == 0:
-                self.addLayer(Input(**layer))
-            elif i == len(layers) - 1:
-                self.addLayer(Output(**layer))
-                self.compile()
-            else:
-                self.addLayer(Dense(**layer))
+def ReLu(z):
+    return np.where(z > 0, z, 0)
 
-    @property
-    def property_dict(self):
-        return {'model_name': self.name, 'momentum': self.momentum, 'learning_rate': self.learning_rate_name, 'layers': ', '.join([str(layer.height) for layer in self.network])}
+def ReLu_diff(z):
+    return np.where(z > 0, 1, 0)
 
-    @property
-    def learning_rate_name(self):
-        if callable(self.learning_rate):
-            if self.learning_rate.__doc__ is not None:
-                return self.learning_rate.__doc__
-            else:
-                return f"(0) {self.learning_rate(0)}"
-        else:
-            return f"flat {self.learning_rate}"
+def leaky_ReLu(z):
+    return np.where(z > 0, z, z * 0.01) 
 
-    @property
-    def parallell_runs(self):
-        return self.network[-1].height
+def leaky_ReLu_diff(z):
+    return np.where(z > 0, 1, 0.01)
 
-    def set_learning_rate(self, learning_rate):
-        self.learning_rate = learning_rate
+def linear(z):
+    return z
 
-    def addLayer(self, layer):
-        """Add a layer to network.
-        
-        Parameters:
-        -----------
-        layer:      subclass of Layer
-                    Layer to add to the end of this network.
-        """
-        self.network.append(layer)
+def linear_diff(z):
+    return np.ones(z.shape)
 
-    def compile(self, x1=None, x2=None, momentum=None):
-        """Compiles the network by initialising weights, and making the list of layers an array.
+def softmax(z):
+    e_z = np.exp(z - np.max(z))
+    return e_z / np.sum(e_z)
 
-        Also functions as a reset to random initial conditions.
-        """
-        for i in range(1, len(self.network)):
-            self.network[i].set_prevLayer(self.network[i-1].height)
-        self.network = np.asarray(self.network)
+def softmax_diff(z):
+    grad = np.diag(z) - np.dot(z, z.T)
+    return grad
 
-    def feed_forward(self, input_neurons):
-        """Feeds forward through the network with a given input.
-        
-        Parameters:
-        -----------
-        input_neurons:
-                    array of floats
-                    Input values. Must have same shape as input layer.
-        """
-        self.network[0].a = input_neurons
-
-        for i in range(1, len(self.network)):
-            self.network[i].feed_forward(self.network[i-1])
-
-    def predict(self, x):
-        """ Predicts on x
-
-        Parameters:
-        -----------
-        x:          array of floats
-
-        Returns:
-        prediction: array of prediction(s)
-        """
-        self.feed_forward(x)
-        return self.network[-1].a
-
-    def update_parameters(self, x, optimal_output, ytilde):
-        """Propagates the error back through the network, and steps in a direction of less loss.
-        
-        Parameters:
-        -----------
-        x:          for compatibility with sgd
-        optimal_output:
-                    array of floats
-                    Optimal or desired output values. Must have same shape as output layer.
-        y:          for compatibility with sgd
-        """
-
-        for i in reversed(range(1, len(self.network))):
-            if i == len(self.network) - 1:
-                backprop_data = optimal_output
-            else:
-                backprop_data = self.network[i+1]
-
-            self.network[i].back_propagate(backprop_data)
-
-            self.network[i].bias_velocity *= self.momentum
-            self.network[i].bias_velocity += self.learning_rate(self.step) * np.mean(self.network[i].d, axis=0)
-            self.network[i].bias += self.network[i].bias_velocity
-
-            self.network[i].weights_velocity *= self.momentum
-            self.network[i].weights_velocity += self.learning_rate(self.step) * 1/self.network[i-1].height * np.dot(self.network[i - 1].a.T, self.network[i].d)
-            self.network[i].weights += self.network[i].weights_velocity
-
-        self.step += 1
-
-    def __str__(self):
-        """Returns a printable string with all the networks biases and weights.
-        """
-        string = "Neural net\n"
-        for i in range(1, len(self.network)):
-            string += f"Layer {i}\n   Biases: {self.network[i].bias.shape}\n   Weights: {self.network[i].weights.shape}\n"
-            #string += f"delta_b = {self.network[i].delta_b.shape}\n delta_w: {self.network[i].delta_w.shape}"
-        return string
+def MSE_diff(actualOutput, optimal_output):
+    return 2 * (optimal_output - actualOutput)
 
 if __name__ == "__main__":
     import plotting
