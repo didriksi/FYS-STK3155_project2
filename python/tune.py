@@ -128,12 +128,12 @@ class Tune:
                     heatmap_df = self.errors_df.loc[metric.__doc__].iloc(axis=1)[-1].groupby(level=[names[i], names[j]]).mean()
                     x_ticks = heatmap_df.index.get_level_values(x_label)
                     y_ticks = heatmap_df.index.get_level_values(y_label)
-                    heatmap_values = heatmap_df.unstack().values
+                    heatmap_values = heatmap_df.unstack().values*10000
 
                     f, ax = plt.subplots(figsize=(9, 6))
 
                     filename = f"{self.name.replace(' ', '_')}_{names[i]}_vs_{names[j]}_{metric.__doc__}"
-                    title = f"{self.name}: {names[i]} vs {names[j]} ({metric.__doc__})"
+                    title = f"{self.name}: {names[i]} vs {names[j]} ({metric.__doc__} scaled $10^{-4}$)"
 
                     plt.title(title)
                     (min_y, ), (min_x, ) = np.nonzero(heatmap_values == np.amin(heatmap_values))
@@ -144,7 +144,7 @@ class Tune:
                                      square=True,
                                      yticklabels=np.unique(y_ticks),
                                      xticklabels=np.unique(x_ticks),
-                                     fmt='3.3f')
+                                     fmt='3.0f')
                     plt.yticks(rotation=45)
                     plt.ylabel(y_label)
                     plt.xlabel(x_label)

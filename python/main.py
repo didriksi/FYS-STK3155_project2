@@ -10,6 +10,7 @@ import sgd
 import metrics
 
 def conf_interval_plot(data, epochs=300):
+    """Plots confidence intervals for different linear models on regression problem for real terrain"""
     polynomials = 8
     X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
     X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
@@ -44,6 +45,7 @@ def conf_interval_plot(data, epochs=300):
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
 def beta_variance(data, epochs=20000, mini_batch_sizes=[10, 20]):
+    """Plots variance of beta parameters for different linear models on regression problem for real terrain"""
     polynomials = 8
     X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
     X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
@@ -131,7 +133,8 @@ def beta_variance(data, epochs=20000, mini_batch_sizes=[10, 20]):
     }
     plotting.side_by_side(*plots, **side_by_side_parameters)
 
-def momentun_plot(data):
+def momentum_plot(data):
+    """Plots effect of momentum for different linear models on regression problem for real terrain"""
     polynomials = 8
     X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
     X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
@@ -159,6 +162,7 @@ def momentun_plot(data):
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
 def neural_regression(data, mini_batch_size=20, epochs=6000, epochs_without_progress=300):
+    """Plots performance of different neural models on regression problem for real terrain"""
     total_steps = epochs * len(data['x_train'])//mini_batch_size
     learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(1e-4, 1/5000), (5e-3, 1/2500), (1e-3, 1/2000)]]
 
@@ -216,6 +220,7 @@ def neural_regression_2(data, mini_batch_size=20, epochs=6000, epochs_without_pr
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
 def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_batch_size=40):
+    """Plots and writes out performance of neural and logistic models on classification problem for the MNIST dataset"""
     total_steps = epochs * len(data['x_train'])//mini_batch_size
 
     learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(3e-3, 1/40000), (2e-3, 1/30000), (5e-3, 1/20000)]]
@@ -246,7 +251,8 @@ def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_
 
     helpers.classification_accuracy(subplots, data)
 
-def regression_compare(data, epochs=6000, epochs_without_progress=300, mini_batch_size=20):
+def regression_compare(data, epochs=10000, epochs_without_progress=300, mini_batch_size=20):
+    """Plots comparison of the best neural and linear models for regression on real terrain"""
     polynomials = 8
     X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
     X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
@@ -276,9 +282,10 @@ def regression_compare(data, epochs=6000, epochs_without_progress=300, mini_batc
 
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
-def tune_neural_reg(data, epochs=10000, epochs_without_progress=500, mini_batch_size=20):
+def tune_neural_reg(data, epochs=20, epochs_without_progress=500, mini_batch_size=20):
+    """Makes a heatmap of performance of different neural models on regrression on real terrain"""
     total_steps =  epochs * len(data['x_train'])//mini_batch_size
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(1e-4, 1/5000), (1e-3, 1/2500), (5e-3, 1/2000), (1e-2, 1/2000)]]
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(5e-3, 1/2500), (1e-3, 1/2500), (1e-2, 1/2000), (3e-2, 1/2000), ]]
 
     common_kwargs = {'momentum': 0.6}
     hidden_layers_sets = [[{'height': hidden}] for hidden in [2, 4, 6, 8]] + [[{'height': hidden}, {'height': hidden}] for hidden in [2, 4, 6, 8]]
@@ -312,7 +319,7 @@ if __name__ == '__main__':
         'conf': (conf_interval_plot, terrainData),
         'momentum': (momentum_plot, terrainData),
         'beta_variance': (beta_variance, terrainData),
-        'neural_reg_tune': (tune_neural_reg, terrainData)
+        'neural_reg_tune': (tune_neural_reg, terrainData),
         'neural_reg': (neural_regression, terrainData),
         'compare_reg': (regression_compare, terrainData),
         'mnist': (mnist_classification, mnistData)        
@@ -326,5 +333,5 @@ if __name__ == '__main__':
         for arg in sys.argv[1:]:
             if arg in functions:
                 f, data = functions[arg]
-                print(f"Performing {name}...")
+                print(f"Performing {arg}...")
                 f(data)
