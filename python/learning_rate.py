@@ -18,12 +18,12 @@ class Learning_rate:
                 base = kwargs['base']
             else:
                 base = 0.01
-            self.parameters['base'] = base
+            self.parameters['b'] = base
             decay = kwargs['decay']
-            self.parameters['decay'] = decay
+            self.parameters['d'] = decay
             self.function = lambda step: base/(1 + step * decay)
 
-        self.name = self.function.__doc__ or ' '.join([f"{key}:{f'{value:.2e}' if isinstance(value, float) else value}" for key, value in self.parameters.items()])
+        self.name = self.function.__doc__ or ' '.join([f"{key}:{f'{value:.2e}' if isinstance(value, float) and int(value) == value else value}" for key, value in self.parameters.items()])
 
         if 'name' in kwargs:
             self.name = kwargs['name']
@@ -42,7 +42,7 @@ class Learning_rate:
             raise NotImplementedError("Haven't implemented any other ramp up types than linear")
 
         self.function = function
-        self.name = f"ramp->{self.name}"
+        self.name = f"/{self.name}"
 
         return self
 
