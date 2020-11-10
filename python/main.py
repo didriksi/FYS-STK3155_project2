@@ -216,23 +216,14 @@ def neural_regression_2(data, mini_batch_size=20, epochs=6000, epochs_without_pr
 
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
-def neural_classification(data, epochs=10000, epochs_without_progress=1000, mini_batch_size=40):
-
+def neural_classification(data, epochs=10000, epochs_without_progress=2000, mini_batch_size=40):
     total_steps = epochs * len(data['x_train'])//mini_batch_size
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(100).compile(total_steps) for base, decay in [(9e-4, 1/4000)]]
+
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(3e-3, 1/40000), (2e-3, 1/30000), (5e-3, 1/20000)]]
 
     common_kwargs = {'momentum': 0.6}
-    subplot_uniques = [{'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
-
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(7e-3, 1/40000)]]
-
-    common_kwargs = {'momentum': 0.5}
-    subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]}]
-
-    # learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(2e-3, 1/40000)]]
-
-    # common_kwargs = {'momentum': 0.7}
-    # subplot_uniques = [{'name':  'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
+    subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]},
+                       {'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
 
     subsubplot_uniques = [{'learning_rate': learning_rate} for learning_rate in learning_rates]
 
@@ -255,47 +246,6 @@ def neural_classification(data, epochs=10000, epochs_without_progress=1000, mini
     sgd.plot_sgd_errors(errors, title, metric_string)
 
     helpers.classification_accuracy(subplots, data)
-
-
-def classification_accuracy(subplots, data):
-    from sklearn.metrics import classification_report, confusion_matrix, plot_confusion_matrix
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-
-    best_models = []
-
-    all_models = [models for models, _ in subplots]
-    true_train = np.where(mnistData['y_train'] == 1)[1]
-    true_val = np.where(mnistData['y_validate'] == 1)[1]
-    true_test = np.where(mnistData['y_test'] == 1)[1]
-    for j, models in enumerate(all_models):
-        model_scores = []
-
-        for k, model in enumerate(models):
-            predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
-
-            accuracy = np.mean(predict_val == true_val)
-            model_scores.append(accuracy)
-        max_score = max(model_scores)
-
-
-        best_models.append([j, model_scores.index(max_score)])
-
-    for index in best_models:
-        model = all_models[index[0]][index[1]]
-        predict_train = model.class_predict(data['x_train'])
-        predict_val = model.class_predict(data['x_validate'])
-        predict_test = model.class_predict(data['x_test'])
-
-        print("Model assessment - test data", model.name)
-        print(classification_report(true_test, predict_test))
-        print("Model assessment - validation data")
-        print(classification_report(true_val, predict_val))
-        plt.close()
-        cf = confusion_matrix(true_val, predict_val)
-        sns.heatmap(cf, annot=True)
-        plt.title(f"Confusion matrix - {model.name} \n {len(data['x_validate'])} samples of validation data")
-        plt.savefig(f"../plots/classification_cf_{model.name}")
 
 def regression_compare(data, epochs=6000, epochs_without_progress=300, mini_batch_size=20):
     polynomials = 8
