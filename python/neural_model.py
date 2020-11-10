@@ -142,6 +142,41 @@ class Network:
             #string += f"delta_b = {self.network[i].delta_b.shape}\n delta_w: {self.network[i].delta_w.shape}"
         return string
 
+def sigmoid(z):
+    return 1/(1 + np.exp(-z))
+
+def sigmoid_diff(z):
+    a = sigmoid(z)
+    return a*(1-a)
+
+def ReLu(z):
+    return np.where(z > 0, z, 0)
+
+def ReLu_diff(z):
+    return np.where(z > 0, 1, 0)
+
+def leaky_ReLu(z):
+    return np.where(z > 0, z, z * 0.01) 
+
+def leaky_ReLu_diff(z):
+    return np.where(z > 0, 1, 0.01)
+
+def linear(z):
+    return z
+
+def linear_diff(z):
+    return np.ones(z.shape)
+
+def softmax(z):
+    e_z = np.exp(z - np.max(z))
+    return e_z / np.sum(e_z)
+
+def softmax_diff(z):
+    grad = np.diag(z) - np.dot(z, z.T)
+    return grad
+
+def MSE_diff(actualOutput, optimal_output):
+    return 2 * (optimal_output - actualOutput)
 
 class Layer:
     """Generic layer in neural network.
@@ -254,42 +289,6 @@ class Output(Dense):
                     Optimal output.
         """
         self.d = self.d_func(self.a, y, self.z)
-
-def sigmoid(z):
-    return 1/(1 + np.exp(-z))
-
-def sigmoid_diff(z):
-    a = sigmoid(z)
-    return a*(1-a)
-
-def ReLu(z):
-    return np.where(z > 0, z, 0)
-
-def ReLu_diff(z):
-    return np.where(z > 0, 1, 0)
-
-def leaky_ReLu(z):
-    return np.where(z > 0, z, z * 0.01) 
-
-def leaky_ReLu_diff(z):
-    return np.where(z > 0, 1, 0.01)
-
-def linear(z):
-    return z
-
-def linear_diff(z):
-    return np.ones(z.shape)
-
-def softmax(z):
-    e_z = np.exp(z - np.max(z))
-    return e_z / np.sum(e_z)
-
-def softmax_diff(z):
-    grad = np.diag(z) - np.dot(z, z.T)
-    return grad
-
-def MSE_diff(actualOutput, optimal_output):
-    return 2 * (optimal_output - actualOutput)
 
 if __name__ == "__main__":
     import plotting

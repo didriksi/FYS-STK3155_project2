@@ -4,6 +4,10 @@ from sklearn.preprocessing import StandardScaler
 
 import metrics
 
+def beta_initialiser(shape):
+    """$3 \\cdot \\mathbb{N}(0,1)$"""
+    return 3*np.random.randn(*shape)
+
 class LinearRegression:
     """Fits on data, and makes some predictions based on linear regression.
 
@@ -301,10 +305,6 @@ def beta_lasso(_lambda, X, y):
     lasso = Lasso(alpha=_lambda, fit_intercept=False, max_iter=200000)
     lasso.fit(X, y)
     return lasso.coef_
-
-def beta_initialiser(shape):
-    """$3 \\cdot \\mathbb{N}(0,1)$"""
-    return 3*np.random.randn(*shape)
 
 
 
