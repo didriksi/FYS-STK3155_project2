@@ -7,7 +7,7 @@ from matplotlib import cm
 import data_handling
 import plotting
 
-def get_data(*data_dict_args, random=False):
+def get_data(x_sparsity):
     """Returns terrain data dict with training, validation and testing data based on grid-size for training data.
 
     Data is real terrain measurements from Ireland. 
@@ -24,7 +24,7 @@ def get_data(*data_dict_args, random=False):
     """
     #y = imread('ireland2.tif')[3200:3600,1400:1800]
     y = imread('ireland2.tif')[3200:3600,1400:1800]
-    return data_handling.make_data_dict(y, *data_dict_args, random=random)
+    return data_handling.make_data_dict(y, x_sparsity)
 
 def plot_data(*data_args, random=False):
     """Plots terrain data created by get_data function.
