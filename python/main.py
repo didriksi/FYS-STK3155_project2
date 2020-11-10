@@ -11,8 +11,8 @@ import metrics
 
 def conf_interval_plot(data, epochs=300):
     polynomials = 8
-    X_train = tune.poly_design_matrix(polynomials, data['x_train'])
-    X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
+    X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
+    X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
 
 
     common_ols_kwargs = {'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
@@ -46,8 +46,8 @@ def conf_interval_plot(data, epochs=300):
 
 def beta_variance(data, epochs=20000, mini_batch_sizes=[10, 20]):
     polynomials = 8
-    X_train = tune.poly_design_matrix(polynomials, data['x_train'])
-    X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
+    X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
+    X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
 
     total_steps = epochs * len(data['x_train'])//mini_batch_sizes[0]
     learning_rate_func = learning_rate.Learning_rate(base=5e-2, decay=1/100000).compile(total_steps)
@@ -134,8 +134,8 @@ def beta_variance(data, epochs=20000, mini_batch_sizes=[10, 20]):
 
 def momemtun_plot(data):
     polynomials = 8
-    X_train = tune.poly_design_matrix(polynomials, data['x_train'])
-    X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
+    X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
+    X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
 
     common_ridge_kwargs = {'name': 'Ridge', 'beta_func': linear_models.beta_ridge, 'momentum': 0.5, 'init_conds': 50, 'x_shape': X_train.shape[1]}
     subplot_ridge_uniques = [{'momentum': 0.9}, {'momentum': 0.6}, {'momentum': 0.3}, {'momentum': 0.}]
@@ -216,7 +216,7 @@ def neural_regression_2(data, mini_batch_size=20, epochs=6000, epochs_without_pr
 
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
-def neural_classification(data, epochs=50000, epochs_without_progress=1000, mini_batch_size=10):
+def neural_classification(data, epochs=10000, epochs_without_progress=1000, mini_batch_size=40):
 
     total_steps = epochs * len(data['x_train'])//mini_batch_size
     # learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(100).compile(total_steps) for base, decay in [(9e-4, 1/4000)]]
@@ -224,10 +224,10 @@ def neural_classification(data, epochs=50000, epochs_without_progress=1000, mini
     # common_kwargs = {'momentum': 0.6}
     # subplot_uniques = [{'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
 
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(2e-3, 1/40000)]]
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(7e-3, 1/40000)]]
 
-    common_kwargs = {'momentum': 0.7}
-    subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
+    common_kwargs = {'momentum': 0.5}
+    subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]}]
 
     subsubplot_uniques = [{'learning_rate': learning_rate} for learning_rate in learning_rates]
 
@@ -249,44 +249,12 @@ def neural_classification(data, epochs=50000, epochs_without_progress=1000, mini
 
     sgd.plot_sgd_errors(errors, title, metric_string)
 
-    classification_accuracy(subplots, data)
-
-
-def classification_accuracy(subplots, data):
-    from sklearn.metrics import classification_report, confusion_matrix
-
-    best_models = []
-    all_models = [models for models, _ in subplots]
-    for j, models in enumerate(all_models):
-        model_scores = []
-        for k, model in enumerate(models):
-            predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
-            true_val = np.where(mnistData['y_validate'] == 1)
-            accuracy = np.mean(predict_val == true_val)
-            model_scores.append(accuracy)
-        max_score = max(model_scores)
-        best_models.append([j, model_scores.index(max_score)])
-
-
-    for index in best_models:
-        model = all_models[index[0]][index[1]]
-        predict_train = np.argmax(model.predict(data['x_train']), axis=1)
-        predict_val = np.argmax(model.predict(data['x_validate']), axis=1)
-        predict_test = np.argmax(model.predict(data['x_test']), axis=1)
-
-        true_train = np.where(mnistData['y_train'] == 1)[1]
-        true_val = np.where(mnistData['y_validate'] == 1)[1]
-        true_test = np.where(mnistData['y_test'] == 1)[1]
-
-        print("Training report", model.name)
-        print(classification_report(true_test, predict_test))
-
-
+    helpers.classification_accuracy(subplots, data)
 
 def regression_compare(data, epochs=6000, epochs_without_progress=300, mini_batch_size=20):
     polynomials = 8
-    X_train = tune.poly_design_matrix(polynomials, data['x_train'])
-    X_validate = tune.poly_design_matrix(polynomials, data['x_validate'])
+    X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
+    X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
     
     total_steps = epochs * len(data['x_train'])//mini_batch_size
 
@@ -313,6 +281,31 @@ def regression_compare(data, epochs=6000, epochs_without_progress=300, mini_batc
 
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
+def tune_neural_reg(data, epochs=10000, epochs_without_progress=500, mini_batch_size=20):
+    total_steps =  epochs * len(data['x_train'])//mini_batch_size
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(1e-4, 1/5000), (1e-3, 1/2500), (5e-3, 1/2000), (1e-2, 1/2000)]]
+
+    common_kwargs = {'momentum': 0.6}
+    hidden_layers_sets = [[{'height': hidden}] for hidden in [2, 4, 6, 8]] + [[{'height': hidden}, {'height': hidden}] for hidden in [2, 4, 6, 8]]
+    subplot_uniques = [{'layers': [{'height': 2}, *hidden_layers, {'height': 1, 'activation': lambda x: x, 'diff_activation': lambda x: 1}]} for hidden_layers in hidden_layers_sets]
+    subsubplot_uniques = [{'learning_rate': learning_rate_func} for learning_rate_func in learning_rates]
+
+    unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
+
+    neural_models = helpers.make_models(
+        neural_model.Network,
+        common_kwargs,
+        subplot_uniques,
+        len(unique_sgd_kwargs),
+        subsubplot_uniques
+        )
+
+    models = [model for models in neural_models for model in models]
+
+    tune_obj = tune.Tune(models, data, [metrics.MSE], name="Neural reg tune")
+    tune_obj.validate(epochs=epochs, mini_batch_size=mini_batch_size, epochs_without_progress=epochs_without_progress)
+    tune_obj.plot_validation_errors()
+
 if __name__ == '__main__':
     import real_terrain
     import mnist
@@ -325,11 +318,15 @@ if __name__ == '__main__':
     if 'momentum' in sys.argv:
         momemtun_plot(terrainData)
     if 'neural' in sys.argv and 'reg' in sys.argv:
-        #neural_regression(terrainData)
-        neural_regression_2(terrainData)
+        neural_regression(terrainData)
+        #neural_regression_2(terrainData)
     if 'neural' in sys.argv and 'class' in sys.argv:
         neural_classification(mnistData)
     if 'betas' in sys.argv:
         beta_variance(terrainData)
     if 'compare' in sys.argv and 'reg' in sys.argv:
         regression_compare(terrainData)
+    if 'neural_tune' in sys.argv:
+        tune_neural_reg(terrainData)
+
+
