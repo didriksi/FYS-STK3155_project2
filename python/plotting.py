@@ -33,16 +33,18 @@ def confidence_interval_plotter(ax, x, lower_midddle_upper_y, *args, color="C0",
                 Color of confidence interval, C0 gives the next color in normal matplotlib order
     **kwargs:   Passed onwards to plt.fill_between()
     """
+    fill_kwargs = {'alpha': 0.5}
+    fill_kwargs.update(kwargs)
     if lower_midddle_upper_y.shape[0] == 3:
         lower = lower_midddle_upper_y[0]
         middle = lower_midddle_upper_y[1]
         upper = lower_midddle_upper_y[2]
         ax.plot(x, middle, color)
-        ax.fill_between(x, lower, upper, color=color, alpha=.5, **kwargs)
+        ax.fill_between(x, lower, upper, color=color, **fill_kwargs)
     elif lower_midddle_upper_y.shape[0] == 2:
         lower = lower_midddle_upper_y[0]
         upper = lower_midddle_upper_y[1]
-        ax.fill_between(x, lower, upper, color=color, alpha=.5, **kwargs)
+        ax.fill_between(x, lower, upper, color=color, **fill_kwargs)
     else:
         if lower_midddle_upper_y.shape[0] == 1:
             middle = lower_midddle_upper_y[0]
