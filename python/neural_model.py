@@ -47,10 +47,7 @@ class Network:
 
     @property
     def parallell_runs(self):
-        return self.network[-1].height
-
-    def set_learning_rate(self, learning_rate):
-        self.learning_rate = learning_rate
+        return 1 #self.network[-1].height
 
     def addLayer(self, layer):
         """Add a layer to network.
@@ -126,10 +123,14 @@ class Network:
             self.network[i].bias_velocity *= self.momentum
             self.network[i].bias_velocity += self.learning_rate(self.step) * np.mean(self.network[i].d, axis=0)
             self.network[i].bias += self.network[i].bias_velocity
+            self.network[i].bias_history.append((np.mean(self.network[i].bias), np.std(self.network[i].bias)))
+
+            #print(i, '\n', self.network[i].bias, '\n', self.network[i].weights)
 
             self.network[i].weights_velocity *= self.momentum
             self.network[i].weights_velocity += self.learning_rate(self.step) * 1/self.network[i-1].height * np.dot(self.network[i - 1].a.T, self.network[i].d)
             self.network[i].weights += self.network[i].weights_velocity
+            self.network[i].weights_history.append((np.mean(self.network[i].weights), np.std(self.network[i].weights)))
 
         self.step += 1
 
@@ -141,6 +142,46 @@ class Network:
             string += f"Layer {i}\n   Biases: {self.network[i].bias.shape}\n   Weights: {self.network[i].weights.shape}\n"
             #string += f"delta_b = {self.network[i].delta_b.shape}\n delta_w: {self.network[i].delta_w.shape}"
         return string
+
+    def plot_history(self):
+        """Plots history of mean and std of weights and biases over steps"""
+        import matplotlib.pyplot as plt
+        import plotting
+
+        x = np.arange(self.step)
+        fig, ax = plt.subplots(figsize=(7,7))
+
+        weights, bias = np.zeros((2, 3, self.step))
+        for i, layer in enumerate(self.network[1:]):
+            weights_mean = np.array([mean for mean, _ in layer.weights_history])
+            weights_std = np.array([std for _, std in layer.weights_history])
+
+            weights[0] = weights_mean - weights_std
+            weights[1] = weights_mean
+            weights[2] = weights_mean + weights_std
+
+            plotting.confidence_interval_plotter(ax, x, weights, color=f"C{2*i+1}", alpha=0.1)
+
+            bias_mean = np.array([mean for mean, _ in layer.bias_history])
+            bias_std = np.array([std for _, std in layer.bias_history])
+            
+            bias[0] = bias_mean - bias_std
+            bias[1] = bias_mean
+            bias[2] = bias_mean + bias_std
+
+            plotting.confidence_interval_plotter(ax, x, bias, color=f"C{2*i}", alpha=0.1)
+
+        plt.title(f"Weights and biases of {self.name} over training")
+        plt.xlabel("Steps")
+        plt.ylabel("Parameter values")
+
+        label_enum = np.arange((len(self.network) - 1)*2)
+        colors = [f"C{number}" for number in label_enum + 2]
+        handler_map = {i: plotting.LegendObject(colors[i]) for i in range(len(colors))}
+        labels = [f"{p_type}, layer {i}" for i in range(1, len(self.network)) for p_type in ['Bias', 'Weights']]
+        ax.legend(label_enum, labels, handler_map=handler_map)
+        
+        plt.savefig(f"../plots/{self.name}_bias_weights_history.png")
 
 def sigmoid(z):
     return 1/(1 + np.exp(-z))
@@ -252,6 +293,9 @@ class Dense(Layer):
 
         self.weights_velocity = np.zeros_like(self.weights)
         self.bias_velocity = np.zeros_like(self.bias)
+
+        self.weights_history = []
+        self.bias_history = [] 
 
 class Output(Dense):
     """Output layer for neural network.
