@@ -79,6 +79,10 @@ def textify_dict(dictionary):
             string_list.append(value)
         elif key == '_lambda':
             string_list.append(f"($\\lambda ${value})")
+        elif key == 'epochs_without_improvement':
+            string_list.append(f"Epochs w/o improvement:{value}")
+        elif key == 'epochs':
+            pass
         else:
             key = key.replace('_', ' ').capitalize()
             string_list.append(f"{key}: {value}")
@@ -147,9 +151,11 @@ def classification_accuracy(subplots, data):
         predict_val = model.class_predict(data['x_validate'])
         predict_test = model.class_predict(data['x_test'])
 
-        print("Model assessment - test data", model.name)
+        print(f"Model assessment of {model.name}.")
+        print(f"---{textify_dict(model.property_dict)}---")
+        print("Test data", model.name)
         print(classification_report(true_test, predict_test))
-        print("Model assessment - validation data")
+        print("Validation data")
         print(classification_report(true_val, predict_val))
         cf = confusion_matrix(true_val, predict_val)
         plt.clf()
