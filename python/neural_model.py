@@ -1,4 +1,5 @@
 import numpy as np
+from activations import *
 
 class Network:
     """Network class that stores layers, and organises interactions between them
@@ -171,50 +172,17 @@ class Network:
 
             plotting.confidence_interval_plotter(ax, x, bias, color=f"C{2*i}", alpha=0.1)
 
-        plt.title(f"Weights and biases of {self.name} over training")
+        plt.title(f"Weights and biases of {self.name.lower()} over training")
         plt.xlabel("Steps")
         plt.ylabel("Parameter values")
 
         label_enum = np.arange((len(self.network) - 1)*2)
-        colors = [f"C{number}" for number in label_enum + 2]
+        colors = [f"C{number}" for number in label_enum]
         handler_map = {i: plotting.LegendObject(colors[i]) for i in range(len(colors))}
         labels = [f"{p_type}, layer {i}" for i in range(1, len(self.network)) for p_type in ['Bias', 'Weights']]
         ax.legend(label_enum, labels, handler_map=handler_map)
         
         plt.savefig(f"../plots/{self.name}_bias_weights_history.png")
-
-def sigmoid(z):
-    return 1/(1 + np.exp(-z))
-
-def sigmoid_diff(z):
-    a = sigmoid(z)
-    return a*(1-a)
-
-def ReLu(z):
-    return np.where(z > 0, z, 0)
-
-def ReLu_diff(z):
-    return np.where(z > 0, 1, 0)
-
-def leaky_ReLu(z):
-    return np.where(z > 0, z, z * 0.01) 
-
-def leaky_ReLu_diff(z):
-    return np.where(z > 0, 1, 0.01)
-
-def linear(z):
-    return z
-
-def linear_diff(z):
-    return np.ones(z.shape)
-
-def softmax(z):
-    e_z = np.exp(z - np.max(z))
-    return e_z / np.sum(e_z)
-
-def softmax_diff(z):
-    grad = np.diag(z) - np.dot(z, z.T)
-    return grad
 
 def MSE_diff(actualOutput, optimal_output):
     return 2 * (optimal_output - actualOutput)
@@ -257,11 +225,11 @@ class Dense(Layer):
                 array of floats -> array of floats
                 Differentiation of activation function.
     """
-    def __init__(self, height, activation=sigmoid, diff_activation=sigmoid_diff):
+    def __init__(self, height, activations=sigmoids):
         super().__init__(height)
         self.z = np.zeros_like(self.a)
         self.d = np.zeros_like(self.a)
-        self.activation, self.diff_activation = activation, diff_activation
+        self.activation, self.diff_activation = activations
 
     def feed_forward(self, prevLayer):
         """Feed forward values through this layer.
@@ -314,9 +282,9 @@ class Output(Dense):
     d_func:     (a, y, z) -> cost
                 Cost function, wih regards to z. Overwrites diff_activation and cost_diff.
     """
-    def __init__(self, height, activation=sigmoid, diff_activation=sigmoid_diff, cost_diff=MSE_diff, d_func=None):
+    def __init__(self, height, activations=sigmoids, cost_diff=MSE_diff, d_func=None):
         if d_func is None:
-            super().__init__(height, activation=activation, diff_activation=diff_activation)
+            super().__init__(height, activations=activations)
             self.cost_diff = cost_diff
             self.d_func = lambda a, y, z: self.cost_diff(a, y) * self.diff_activation(z)
         else:
