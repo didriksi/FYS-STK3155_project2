@@ -38,11 +38,9 @@ def plot_data(data):
 
     Parameters:
     -----------
-    *data_args: args
-                Passed on to get_data
+    data:      dict
+                Dictionary with x and y data.
     """
-
-    data = get_data(*data_args)
 
     # Plot how many data points there are of each class in each subset
     plt.hist([data['y_train'], data['y_validate'], data['y_test']], stacked=True, rwidth=0.9, bins=np.arange(0,11)-0.5)
@@ -58,7 +56,7 @@ def plot_data(data):
 
         xs = np.empty(10)
         for y_ in range(10):
-            xs[y_] = np.sum(x[y==y_])
+            xs[y_] = np.sum(x[(y[:,y_] == 1)])
 
         plt.plot(xs/np.sum(xs))
     plt.ylim(0,0.2)
@@ -71,7 +69,7 @@ def plot_data(data):
     fig = plt.figure()
     for y_ in range(10):
         ax = fig.add_subplot(2, 5, y_+1)
-        ax.imshow(data['x'][data['y']==y_][0].reshape(8,8), cmap=plt.get_cmap('Greys'))
+        ax.imshow(data['x'][(data['y'][:,y_] == 1)][0].reshape(8,8), cmap=plt.get_cmap('Greys'))
         ax.set_title(y_)
         plt.xticks([])
         plt.yticks([])
