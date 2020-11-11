@@ -8,6 +8,10 @@ def R_2(y, y_tilde):
     """R2"""
     return 1 - np.sum(np.square(y - y_tilde)) / np.sum(np.square(y - np.mean(y)))
 
+def R_2_loss(y, y_tilde):
+    """1 - R2"""
+    return 1 - np.sum(np.square(y - y_tilde)) / np.sum(np.square(y - np.mean(y)))
+
 model_variance = lambda y_tilde: np.mean((y_tilde - np.mean(y_tilde, axis=0)) ** 2)
 
 model_bias = lambda y, y_tilde: np.mean((y - np.mean(y_tilde, axis=0)) ** 2)
@@ -17,12 +21,14 @@ def cross_entropy(y, y_tilde):
     """Cross entropy"""
     return - np.mean(y * np.log(y_tilde + 1e-12))
 
-
 def accuracy(y, y_tilde):
     """Accuracy"""
     targ = np.where(y == 1)[1]
     pred = np.argmax(y_tilde, axis=1)
     return np.mean(targ == pred)
 
-
-#cross_entropy = lambda y, y_tilde: np.mean(y * np.log(y_tilde) + (1 - y) * np.log(1 - y_tilde))
+def accuracy_loss(y, y_tilde):
+    """1 - accuracy"""
+    targ = np.where(y == 1)[1]
+    pred = np.argmax(y_tilde, axis=1)
+    return 1 - np.mean(targ == pred)
