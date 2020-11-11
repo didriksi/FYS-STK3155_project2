@@ -72,8 +72,9 @@ class Tune:
         errors_index = pd.MultiIndex.from_product([metric_texts, *model_parameters], names = ['Metric', *parameter_names])
         self.errors_df = pd.DataFrame(dtype=float, index=errors_index, columns=range(1, epochs+1))
 
-        X_train = linear_models.poly_design_matrix(self.polynomials, self.data['x_train'])
-        X_validate = linear_models.poly_design_matrix(self.polynomials, self.data['x_validate'])
+        if self.polynomials is not None:
+            X_train = linear_models.poly_design_matrix(self.polynomials, self.data['x_train'])
+            X_validate = linear_models.poly_design_matrix(self.polynomials, self.data['x_validate'])
 
         y_train, y_validate = self.data['y_train'], self.data['y_validate']
 
@@ -91,7 +92,7 @@ class Tune:
 
             for j, metric in enumerate(self._metrics):
                 model.compile()
-                errors, = sgd.sgd(model, x_train, x_validate, y_train, y_validate, epochs=epochs, metric=metric, **kwargs)[1]
+                errors = sgd.sgd(model, x_train, x_validate, y_train, y_validate, epochs=epochs, metric=metric, **kwargs)[1]
                 self.errors_df.loc[tuple(pd.IndexSlice[s] for s in [metric.__doc__, *model_indexes])] = errors
 
         print("")
@@ -110,15 +111,14 @@ class Tune:
         for metric in self._metrics:
             for i in range(1, len(names)):
                 for j in range(i+1, len(names)):
-                    
                     x_label = names[j]
                     y_label = names[i]
-                    x_indexes = index.get_level_values(x_label)
-                    y_indexes = index.get_level_values(y_label)
 
                     heatmap_df = self.errors_df.loc[metric.__doc__].iloc(axis=1)[-1].copy()
                     remove_levels = np.ones(len(names), dtype=bool)
                     remove_levels[np.array([0,i,j])] = False
+                    print(remove_levels == True)
+                    print(names)
                     if np.nonzero(remove_levels == True)[0] > 0:
                         for k in np.nonzero(remove_levels == True):
                             heatmap_df = heatmap_df.mean(level=k)
@@ -132,12 +132,14 @@ class Tune:
 
                     f, ax = plt.subplots(figsize=(9, 6))
 
-                    filename = f"{self.name.replace(' ', '_')}_{names[i]}_vs_{names[j]}_{metric.__doc__}"
-                    title = f"{self.name}: {names[i]} vs {names[j]} ({metric.__doc__} scaled $10^{-4}$)"
+                    filename = f"{self.name.replace(' ', '_').replace(',', '')}_{names[i]}_vs_{names[j]}_{metric.__doc__}"
+                    title = f"{self.name}: {names[i]} vs {names[j]} ({metric.__doc__}, scaled $10^{-4}$)"
 
                     plt.title(title)
-                    (min_y, ), (min_x, ) = np.nonzero(heatmap_values == np.amin(heatmap_values))
-                    ax.add_patch(Rectangle((min_x, min_y), 1, 1, fill=False, edgecolor='pink', lw=3))
+
+                    min_y, min_x = np.nonzero(heatmap_values == np.amin(heatmap_values))
+                    for i in range(len(min_y)):
+                        ax.add_patch(Rectangle((min_x[i], min_y[i]), 1, 1, fill=False, edgecolor='pink', lw=3))
                     ax = sns.heatmap(heatmap_values,
                                      cbar=False,
                                      annot=True,
