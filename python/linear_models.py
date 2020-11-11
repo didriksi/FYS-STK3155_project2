@@ -305,28 +305,3 @@ def beta_lasso(_lambda, X, y):
     lasso = Lasso(alpha=_lambda, fit_intercept=False, max_iter=200000)
     lasso.fit(X, y)
     return lasso.coef_
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
