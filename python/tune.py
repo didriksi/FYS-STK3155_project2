@@ -107,7 +107,7 @@ class Tune:
         Makes one plot for each combination of two factors, for each metric."""
         index = self.errors_df.index
         names = index.names
-
+        
         for metric in self._metrics:
             for i in range(1, len(names)):
                 for j in range(i+1, len(names)):
@@ -117,8 +117,6 @@ class Tune:
                     heatmap_df = self.errors_df.loc[metric.__doc__].iloc(axis=1)[-1].copy()
                     remove_levels = np.ones(len(names), dtype=bool)
                     remove_levels[np.array([0,i,j])] = False
-                    print(remove_levels == True)
-                    print(names)
                     if np.nonzero(remove_levels == True)[0] > 0:
                         for k in np.nonzero(remove_levels == True):
                             heatmap_df = heatmap_df.mean(level=k)
@@ -151,5 +149,3 @@ class Tune:
                     plt.ylabel(y_label)
                     plt.xlabel(x_label)
                     plt.savefig(f"../plots/{filename}")
-                    plt.show()
-
