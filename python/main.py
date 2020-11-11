@@ -223,12 +223,13 @@ def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_
     """Plots and writes out performance of neural and logistic models on classification problem for the MNIST dataset"""
     total_steps = epochs * len(data['x_train'])//mini_batch_size
 
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(3e-3, 1/40000), (2e-3, 1/30000), (5e-3, 1/20000)]]
+    #learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(3e-3, 1/40000), (2e-3, 1/30000), (5e-3, 1/20000)]]
 
     common_kwargs = {'momentum': 0.6}
     subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]},
                        {'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
 
+    learning_rates = [2e-3]
     subsubplot_uniques = [{'learning_rate': learning_rate} for learning_rate in learning_rates]
 
     unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
@@ -250,6 +251,10 @@ def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_
     sgd.plot_sgd_errors(errors, title, metric_string)
 
     helpers.classification_accuracy(subplots, data)
+
+    for models, _ in subplots:
+        for model in models:
+            model.plot_history()
 
 def regression_compare(data, epochs=10000, epochs_without_progress=300, mini_batch_size=20):
     """Plots comparison of the best neural and linear models for regression on real terrain"""
@@ -308,6 +313,51 @@ def tune_neural_reg(data, epochs=20, epochs_without_progress=500, mini_batch_siz
     tune_obj.validate(epochs=epochs, mini_batch_size=mini_batch_size, epochs_without_progress=epochs_without_progress)
     tune_obj.plot_validation_errors()
 
+def tune_mnist_classification(data, epochs=15000, epochs_without_progress=500, mini_batch_size=40):
+    """Makes a heatmap of performance of neural and logistic models on classification on the MNIST dataset"""
+    total_steps =  epochs * len(data['x_train'])//mini_batch_size
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(3e-3, 1/40000), (2e-3, 1/20000), (5e-3, 1/10000)]]
+
+    common_kwargs = {'momentum': 0.6}
+    subsubplot_uniques = [{'learning_rate': learning_rate_func} for learning_rate_func in learning_rates]
+    unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
+
+    # Neural tuning
+    subplot_uniques = [{'layers': [{'height': 64}, {'height': 16}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]},
+                       {'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]},
+                       {'layers': [{'height': 64}, {'height': 64}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]}]
+
+    neural_models = helpers.make_models(
+        neural_model.Network,
+        common_kwargs,
+        subplot_uniques,
+        len(unique_sgd_kwargs),
+        subsubplot_uniques
+        )
+
+    models = [model for models in neural_models for model in models]
+
+    tune_obj = tune.Tune(models, data, [metrics.accuracy_loss], name="MNIST classification tune, neural", polynomials=None)
+    tune_obj.validate(epochs=epochs, mini_batch_size=mini_batch_size, epochs_without_progress=epochs_without_progress)
+    tune_obj.plot_validation_errors()
+
+    # Logistic tuning
+    subplot_uniques = [{'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
+
+    neural_models = helpers.make_models(
+        neural_model.Network,
+        common_kwargs,
+        subplot_uniques,
+        len(unique_sgd_kwargs),
+        subsubplot_uniques
+        )
+
+    models = [model for models in neural_models for model in models]
+
+    tune_obj = tune.Tune(models, data, [metrics.accuracy_loss], name="MNIST classification tune, logistic", polynomials=None)
+    tune_obj.validate(epochs=epochs, mini_batch_size=mini_batch_size, epochs_without_progress=epochs_without_progress)
+    tune_obj.plot_validation_errors()
+
 if __name__ == '__main__':
     import real_terrain
     import mnist
@@ -322,7 +372,8 @@ if __name__ == '__main__':
         'neural_reg_tune': (tune_neural_reg, terrainData),
         'neural_reg': (neural_regression, terrainData),
         'compare_reg': (regression_compare, terrainData),
-        'mnist': (mnist_classification, mnistData)        
+        'mnist': (mnist_classification, mnistData),
+        'mnist_tune': (tune_mnist_classification, mnistData)
     }
 
     if 'all' in sys.argv:
