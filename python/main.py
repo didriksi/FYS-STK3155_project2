@@ -8,6 +8,7 @@ import neural_model
 import helpers
 import sgd
 import metrics
+import activations
 
 def conf_interval_plot(data, epochs=300):
     """Plots confidence intervals for different linear models on regression problem for real terrain"""
@@ -161,16 +162,19 @@ def momentum_plot(data):
 
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
-def neural_regression(data, mini_batch_size=20, epochs=6000, epochs_without_progress=300):
+def neural_regression(data, epochs=5000, epochs_without_progress=500, mini_batch_size=20):
     """Plots performance of different neural models on regression problem for real terrain"""
     total_steps = epochs * len(data['x_train'])//mini_batch_size
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(1e-4, 1/5000), (5e-3, 1/2500), (1e-3, 1/2000)]]
+    
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(1e-2, 1/2000), (3e-2, 1/2000)]]
 
-    common_kwargs = {'momentum': 0.5}
-    hidden_layers_sets = [[{'height': hidden}] for hidden in [2, 4, 6]] + [[{'height': 2}, {'height': 2}]]
-    subplot_uniques = [{'layers': [{'height': 2}, *hidden_layers, {'height': 1, 'activation': lambda x: x, 'diff_activation': lambda x: 1}]} for hidden_layers in hidden_layers_sets]
+    common_kwargs = {'momentum': 0.6}
+    subplot_uniques = [{'layers': [{'height': 2}, {'height': hidden}, {'height': 1, 'activations': activations.linears}]} for hidden in [2, 4, 6, 8]]
     subsubplot_uniques = [{'learning_rate': learning_rate_func} for learning_rate_func in learning_rates]
 
+    #TODO: Complete with best models from tune
+    sigmoid_uniques = [{'layers': [{'height': 2}, {'height': hidden}, {'height': 1, 'activations': activations.linears}],
+                        'learning_rate': learning_rate_func,} for learning_rate_func in learning_rates] 
     unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
 
     neural_models = helpers.make_models(
@@ -195,11 +199,11 @@ def neural_regression_2(data, mini_batch_size=20, epochs=6000, epochs_without_pr
     common_kwargs = {'momentum': 0.6}
     subplot_uniques = [{}]
     subsubplot_uniques = [{'name': name, 'learning_rate': learning_rate, 'layers':
-                      [{'height': 2}, {'height': 2, 'activation': activation, 'diff_activation': diff_activation}, {'height': 1}]}
-                        for name, activation, diff_activation, learning_rate
-                        in [('Neural: Sigmoid', neural_model.sigmoid, neural_model.sigmoid_diff, learning_rate.Learning_rate(base=5e-3, decay=1/2500).compile(total_steps)),
-                            ('Neural: ReLu', neural_model.ReLu, neural_model.ReLu_diff, learning_rate.Learning_rate(base=1e-4, decay=1/4000).compile(total_steps)),
-                            ('Neural: Leaky ReLu', neural_model.leaky_ReLu, neural_model.leaky_ReLu_diff, learning_rate.Learning_rate(base=1e-4, decay=1/4000).compile(total_steps))]]
+                      [{'height': 2}, {'height': 2, 'activations': _activations}, {'height': 1}]}
+                        for name, _activations, learning_rate
+                        in [('Neural: Sigmoid', activations.sigmoids, learning_rate.Learning_rate(base=5e-3, decay=1/2500).compile(total_steps)),
+                            ('Neural: ReLu', activations.relus, learning_rate.Learning_rate(base=1e-4, decay=1/4000).compile(total_steps)),
+                            ('Neural: Leaky ReLu', activations.leaky_relus, learning_rate.Learning_rate(base=1e-4, decay=1/4000).compile(total_steps))]]
 
     unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
 
@@ -223,13 +227,54 @@ def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_
     """Plots and writes out performance of neural and logistic models on classification problem for the MNIST dataset"""
     total_steps = epochs * len(data['x_train'])//mini_batch_size
 
-    #learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(3e-3, 1/40000), (2e-3, 1/30000), (5e-3, 1/20000)]]
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(3e-3, 5e-5), (2e-3, 5e-5)]]
 
     common_kwargs = {'momentum': 0.6}
-    subplot_uniques = [{'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]},
-                       {'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
+    subplot_uniques = [{'layers': [{'height': 64}, {'height': 64}, {'height': 10, 'd_func': lambda a, y, _: y - a}]},
+                       {'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activations': activations.softmaxs, 'd_func': lambda a, y, _: y - a}]}]
 
-    learning_rates = [2e-3]
+    subsubplot_uniques = [{'learning_rate': learning_rate} for learning_rate in learning_rates]
+
+    unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
+
+    neural_models = helpers.make_models(
+        neural_model.Network,
+        common_kwargs,
+        subplot_uniques,
+        len(unique_sgd_kwargs),
+        subsubplot_uniques
+        )
+
+    subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(neural_models, unique_sgd_kwargs*len(neural_models))]
+
+    sgd_on_models_kwargs = {
+        'epochs': epochs,
+        'epochs_without_progress': epochs_without_progress,
+        'metric': metrics.accuracy_loss
+    }
+    data_args = [data['x_train'], data['x_validate'], data['y_train'], data['y_validate']]
+    errors, subtitle, subplots, metric_string = sgd.sgd_on_models(*data_args, *subplots, **sgd_on_models_kwargs)
+
+    title = ['Neural model, Classification test', 'neural_classification', subtitle]
+
+    sgd.plot_sgd_errors(errors, title, metric_string)
+
+    helpers.classification_accuracy(subplots, data)
+
+def mnist_softmax_sigmoid(data, epochs=10000, epochs_without_progress=2000, mini_batch_size=40):
+    """Compares softmax and sigmoid as activation of final layer on classification problem for the MNIST dataset
+
+    We have had some issues making softmax working for several layers, and we can't figure out exactly why.
+    The plot generated here does however show what goes wrong, namely exploding weights in the hidden layer."""
+
+    total_steps = epochs * len(data['x_train'])//mini_batch_size
+
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(1000).compile(total_steps) for base, decay in [(2e-3, 1/30000)]]
+
+    common_kwargs = {'momentum': 0.6}
+    subplot_uniques = [{'name': 'Softmax', 'layers': [{'height': 64}, {'height': 64}, {'height': 10, 'activations': activations.softmaxs, 'd_func': lambda a, y, _: y - a}]},
+                       {'name': 'Sigmoid', 'layers': [{'height': 64}, {'height': 64}, {'height': 10, 'd_func': lambda a, y, _: y - a}]}]
+
     subsubplot_uniques = [{'learning_rate': learning_rate} for learning_rate in learning_rates]
 
     unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
@@ -246,15 +291,9 @@ def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_
 
     errors, subtitle, subplots, metric_string = sgd.sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=epochs, epochs_without_progress=epochs_without_progress, metric=metrics.cross_entropy)
 
-    title = ['Neural model, Classification test', 'neural_classification', subtitle]
+    title = ['Neural model, softmax vs sigmoid', 'softmax_vs_sigmoid', subtitle]
 
     sgd.plot_sgd_errors(errors, title, metric_string)
-
-    helpers.classification_accuracy(subplots, data)
-
-    for models, _ in subplots:
-        for model in models:
-            model.plot_history()
 
 def regression_compare(data, epochs=10000, epochs_without_progress=300, mini_batch_size=20):
     """Plots comparison of the best neural and linear models for regression on real terrain"""
@@ -266,7 +305,7 @@ def regression_compare(data, epochs=10000, epochs_without_progress=300, mini_bat
 
     neural = neural_model.Network(
         momentum=0.6,
-        layers=[{'height': 2}, {'height': 2}, {'height': 1, 'activation': lambda z: z, 'diff_activation': lambda z: 1}],
+        layers=[{'height': 2}, {'height': 2}, {'height': 1, 'activations': activations.linears}],
         learning_rate=learning_rate.Learning_rate(base=5e-3, decay=1/2500).ramp_up(10).compile(total_steps)
         )
 
@@ -287,31 +326,38 @@ def regression_compare(data, epochs=10000, epochs_without_progress=300, mini_bat
 
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
-def tune_neural_reg(data, epochs=20, epochs_without_progress=500, mini_batch_size=20):
+def tune_neural_reg(data, epochs=10000, epochs_without_progress=500, mini_batch_size=20):
     """Makes a heatmap of performance of different neural models on regrression on real terrain"""
     total_steps =  epochs * len(data['x_train'])//mini_batch_size
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(5e-3, 1/2500), (1e-3, 1/2500), (1e-2, 1/2000), (3e-2, 1/2000), ]]
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(1e-3, 1/2500), (1e-2, 1/2000), (3e-2, 1/2000)]]
 
     common_kwargs = {'momentum': 0.6}
-    hidden_layers_sets = [[{'height': hidden}] for hidden in [2, 4, 6, 8]] + [[{'height': hidden}, {'height': hidden}] for hidden in [2, 4, 6, 8]]
-    subplot_uniques = [{'layers': [{'height': 2}, *hidden_layers, {'height': 1, 'activation': lambda x: x, 'diff_activation': lambda x: 1}]} for hidden_layers in hidden_layers_sets]
     subsubplot_uniques = [{'learning_rate': learning_rate_func} for learning_rate_func in learning_rates]
 
     unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
 
-    neural_models = helpers.make_models(
-        neural_model.Network,
-        common_kwargs,
-        subplot_uniques,
-        len(unique_sgd_kwargs),
-        subsubplot_uniques
-        )
+    activation_names = ['ReLu', 'Leaky ReLu', 'Sigmoid']
+    _activations = [activations.relus, activations.leaky_relus, activations.sigmoids]
+    for _activations, activation_name in zip(activations, activation_names):
+        heights = [2, 4, 6, 8]
+        hiddens_1 = [[{'height': hidden, 'activations': _activations}] for hidden in heights]
+        hiddens_2 = [[{'height': hidden, 'activations': _activations},
+                      {'height': hidden, 'activations': _activations}] for hidden in heights]
+        subplot_uniques = [{'layers': [{'height': 2}, *hidden_layers, {'height': 1, 'activations': activations.linears}]} for hidden_layers in hiddens_1 + hiddens_2]
+        
+        neural_models = helpers.make_models(
+            neural_model.Network,
+            common_kwargs,
+            subplot_uniques,
+            len(unique_sgd_kwargs),
+            subsubplot_uniques
+            )
 
-    models = [model for models in neural_models for model in models]
+        models = [model for models in neural_models for model in models]
 
-    tune_obj = tune.Tune(models, data, [metrics.MSE], name="Neural reg tune")
-    tune_obj.validate(epochs=epochs, mini_batch_size=mini_batch_size, epochs_without_progress=epochs_without_progress)
-    tune_obj.plot_validation_errors()
+        tune_obj = tune.Tune(models, data, [metrics.MSE], name=f"Neural reg tune {activation_name}")
+        tune_obj.validate(epochs=epochs, mini_batch_size=mini_batch_size, epochs_without_progress=epochs_without_progress)
+        tune_obj.plot_validation_errors()
 
 def tune_mnist_classification(data, epochs=15000, epochs_without_progress=500, mini_batch_size=40):
     """Makes a heatmap of performance of neural and logistic models on classification on the MNIST dataset"""
@@ -322,10 +368,9 @@ def tune_mnist_classification(data, epochs=15000, epochs_without_progress=500, m
     subsubplot_uniques = [{'learning_rate': learning_rate_func} for learning_rate_func in learning_rates]
     unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
 
-    # Neural tuning
-    subplot_uniques = [{'layers': [{'height': 64}, {'height': 16}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]},
-                       {'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]},
-                       {'layers': [{'height': 64}, {'height': 64}, {'height': 10, 'activation': neural_model.sigmoid, 'd_func': lambda a, y, _: y - a}]}]
+    subplot_uniques = [{'layers': [{'height': 64}, {'height': 16}, {'height': 10, 'activations': activations.sigmoids, 'd_func': lambda a, y, _: y - a}]},
+                       {'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activations': activations.sigmoids, 'd_func': lambda a, y, _: y - a}]},
+                       {'layers': [{'height': 64}, {'height': 64}, {'height': 10, 'activations': activations.sigmoids, 'd_func': lambda a, y, _: y - a}]}]
 
     neural_models = helpers.make_models(
         neural_model.Network,
@@ -337,26 +382,9 @@ def tune_mnist_classification(data, epochs=15000, epochs_without_progress=500, m
 
     models = [model for models in neural_models for model in models]
 
-    tune_obj = tune.Tune(models, data, [metrics.accuracy_loss], name="MNIST classification tune, neural", polynomials=None)
-    tune_obj.validate(epochs=epochs, mini_batch_size=mini_batch_size, epochs_without_progress=epochs_without_progress)
-    tune_obj.plot_validation_errors()
-
-    # Logistic tuning
-    subplot_uniques = [{'name': 'Logistic', 'layers': [{'height': 64}, {'height': 10, 'activation': neural_model.softmax, 'd_func': lambda a, y, _: y - a}]}]
-
-    neural_models = helpers.make_models(
-        neural_model.Network,
-        common_kwargs,
-        subplot_uniques,
-        len(unique_sgd_kwargs),
-        subsubplot_uniques
-        )
-
-    models = [model for models in neural_models for model in models]
-
-    tune_obj = tune.Tune(models, data, [metrics.accuracy_loss], name="MNIST classification tune, logistic", polynomials=None)
-    tune_obj.validate(epochs=epochs, mini_batch_size=mini_batch_size, epochs_without_progress=epochs_without_progress)
-    tune_obj.plot_validation_errors()
+    neural_tune = tune.Tune(models, data, [metrics.accuracy_loss], name="MNIST classification tune, neural", polynomials=None)
+    neural_tune.validate(epochs=epochs, mini_batch_size=mini_batch_size, epochs_without_progress=epochs_without_progress)
+    neural_tune.plot_validation_errors()
 
 if __name__ == '__main__':
     import real_terrain
