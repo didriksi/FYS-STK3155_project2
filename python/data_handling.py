@@ -77,7 +77,9 @@ def make_classification_dict(x, y, train_size, test_size, even=True):
     """
     assert train_size + test_size <= 1, "Sum of train_size and test_size must be no larger than 1."
 
-    x /= np.max(x)
+    #x /= np.max(x)
+
+    x = (x - np.mean(x))/np.std(x)
 
     data = {}
 
@@ -133,6 +135,6 @@ def make_classification_dict(x, y, train_size, test_size, even=True):
     return data
 
 def onehot(y, max_y):
-    vector = np.zeros((y.shape[0], max_y))
+    vector = np.zeros((1 if isinstance(y, int) else y.shape[0], max_y))
     vector[:,y] = 1
     return vector
