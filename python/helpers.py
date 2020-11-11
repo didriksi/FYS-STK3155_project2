@@ -139,7 +139,6 @@ def classification_accuracy(subplots, data):
             model_scores.append(accuracy)
         max_score = max(model_scores)
 
-
         best_models.append([j, model_scores.index(max_score)])
 
     for index in best_models:
@@ -153,6 +152,7 @@ def classification_accuracy(subplots, data):
         print("Model assessment - validation data")
         print(classification_report(true_val, predict_val))
         cf = confusion_matrix(true_val, predict_val)
+        plt.clf()
         sns.heatmap(cf, annot=True)
         plt.title(f"Confusion matrix - {model.name} \n {len(data['x_validate'])} samples of validation data")
         plt.savefig(f"../plots/classification_cf_{model.name}")
