@@ -23,23 +23,21 @@ class Learning_rate:
             self.parameters['d'] = decay
             self.function = lambda step: base/(1 + step * decay)
 
-        self.name = self.function.__doc__ or ' '.join([f"{key}:{f'{value:.2e}' if isinstance(value, float) and int(value) == value else value}" for key, value in self.parameters.items()])
+        self.name = self.function.__doc__ or ' '.join(
+            [f"{key}:{f'{value:.2e}' if isinstance(value, float) and int(value) == value else value}"
+                                                            for key, value in self.parameters.items()])
 
         if 'name' in kwargs:
             self.name = kwargs['name']
 
-        self.base_function = self.function
-
     def ramp_up(self, ramp_up_steps, ramp_up_type="linear"):
+        self.base_function = self.function
         ramp_up_to = self.function(0)
-        if ramp_up_type == 'linear':
-            def function(step):
-                if step < ramp_up_steps:
-                    return (step+1/ramp_up_steps+1) * ramp_up_to
-                else:
-                    return self.base_function(step-ramp_up_steps)
-        else:
-            raise NotImplementedError("Haven't implemented any other ramp up types than linear")
+        def function(step):
+            if step < ramp_up_steps:
+                return (step/ramp_up_steps) * (ramp_up_to - ramp_up_to/10) + ramp_up_to/10
+            else:
+                return self.base_function(step-ramp_up_steps)
 
         self.function = function
         self.name = f"/{self.name}"
@@ -48,11 +46,10 @@ class Learning_rate:
 
     def plot(self, max_steps, filename="learning_rate"):
         learning_rates = []
-        steps = np.arange(max_steps)
-        for step in steps:
+        for step in np.arange(max_steps):
             learning_rates.append(self.function(step))
 
-        plt.plot(steps, learning_rates)
+        plt.plot(learning_rates)
         plt.title(self.name)
         plt.savefig(f"../plots/{filename}.png")
 
@@ -64,3 +61,10 @@ class Learning_rate:
         self.function = lambda step: self.learning_rates[step]
         self.function.__doc__ = self.name
         return self.function
+
+if __name__ == '__main__':
+    learning_rate = Learning_rate(base=1e-3, decay=1/2000).ramp_up(200)
+    learning_rate.plot(10000)
+
+
+
