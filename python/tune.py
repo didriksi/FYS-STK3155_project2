@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 import linear_models
-import resampling
 import metrics
 import plotting
 import sgd
