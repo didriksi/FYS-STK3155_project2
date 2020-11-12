@@ -79,8 +79,8 @@ def textify_dict(dictionary):
             string_list.append(value)
         elif key == '_lambda':
             string_list.append(f"($\\lambda ${value})")
-        elif key == 'epochs_without_improvement':
-            string_list.append(f"Epochs w/o improvement:{value}")
+        elif key == 'epochs_without_progress':
+            string_list.append(f"Epochs w/o progress: {value}")
         elif key == 'epochs':
             pass
         else:
@@ -159,7 +159,7 @@ def classification_accuracy(subplots, data):
         print(classification_report(true_val, predict_val))
         cf = confusion_matrix(true_val, predict_val)
         plt.clf()
-        sns.heatmap(cf, annot=True)
+        sns.heatmap(cf, annot=True, cbar=False)
         plt.title(f"Confusion matrix - {model.name} \n {len(data['x_validate'])} samples of validation data")
         plt.savefig(f"../plots/classification_cf_{model.name}")
         plt.clf()
