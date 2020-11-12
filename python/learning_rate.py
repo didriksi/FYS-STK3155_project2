@@ -46,7 +46,7 @@ class Learning_rate:
 
         return self
 
-    def plot(self, max_steps, filename="../plots/learning_rate"):
+    def plot(self, max_steps, filename="learning_rate"):
         learning_rates = []
         steps = np.arange(max_steps)
         for step in steps:

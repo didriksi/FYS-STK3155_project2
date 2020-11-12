@@ -288,7 +288,7 @@ class Output(Dense):
             self.cost_diff = cost_diff
             self.d_func = lambda a, y, z: self.cost_diff(a, y) * self.diff_activation(z)
         else:
-            super().__init__(height, activation=activation, diff_activation=None)
+            super().__init__(height, activations=activations)
             self.cost_diff = None
             self.d_func = d_func
 
