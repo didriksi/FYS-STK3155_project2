@@ -330,7 +330,8 @@ def tune_mnist_classification(data, epochs=15000, epochs_without_progress=500, m
 
     subplot_uniques = [{'layers': [{'height': 64}, {'height': 16}, {'height': 10, 'activations': activations.sigmoids, 'd_func': lambda a, y, _: y - a}]},
                        {'layers': [{'height': 64}, {'height': 32}, {'height': 10, 'activations': activations.sigmoids, 'd_func': lambda a, y, _: y - a}]},
-                       {'layers': [{'height': 64}, {'height': 64}, {'height': 10, 'activations': activations.sigmoids, 'd_func': lambda a, y, _: y - a}]}]
+                       {'layers': [{'height': 64}, {'height': 64}, {'height': 10, 'activations': activations.sigmoids, 'd_func': lambda a, y, _: y - a}]},
+                       {'layers': [{'height': 64}, {'height': 96}, {'height': 10, 'activations': activations.sigmoids, 'd_func': lambda a, y, _: y - a}]}]
 
     neural_models = helpers.make_models(
         neural_model.Network,
@@ -358,9 +359,9 @@ if __name__ == '__main__':
         'momentum': (momentum_plot, terrainData),
         'beta_variance': (beta_variance, terrainData),
         'neural_reg_tune': (tune_neural_reg, terrainData),
-        'neural_reg': (neural_regression, terrainData),
+        'reg': (neural_regression, terrainData),
         'mnist': (mnist_classification, mnistData),
-        'mnist_tune': (tune_mnist_classification, mnistData)
+        'mnist_reg_tune': (tune_mnist_classification, mnistData)
     }
 
     if 'all' in sys.argv:
