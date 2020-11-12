@@ -262,7 +262,9 @@ def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_
 
     sgd.plot_sgd_errors(errors, title, metric_string)
 
-    helpers.classification_accuracy(subplots, data)
+    classification_subplots = [(subplots[0][0], subplots[1]), (subplots[0][1], subplots[1])]
+
+    helpers.classification_accuracy(classification_subplots, data)
 
 def mnist_softmax_sigmoid(data, epochs=5000, epochs_without_progress=2000, mini_batch_size=40):
     """Compares softmax and sigmoid as activation of final layer on classification problem for the MNIST dataset
