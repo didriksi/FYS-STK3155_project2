@@ -107,7 +107,7 @@ class Tune:
         Makes one plot for each combination of two factors, for each metric."""
         index = self.errors_df.index
         names = index.names
-        
+
         for metric in self._metrics:
             for i in range(1, len(names)):
                 for j in range(i+1, len(names)):
@@ -131,13 +131,13 @@ class Tune:
                     f, ax = plt.subplots(figsize=(9, 6))
 
                     filename = f"{self.name.replace(' ', '_').replace(',', '')}_{names[i]}_vs_{names[j]}_{metric.__doc__}"
-                    title = f"{self.name}: {names[i]} vs {names[j]} ({metric.__doc__}, scaled $10^{-4}$)"
+                    title = f"{self.name}: {names[i]} vs {names[j]} ({metric.__doc__}, scaled $10^{4}$)"
 
                     plt.title(title)
 
                     min_y, min_x = np.nonzero(heatmap_values == np.amin(heatmap_values))
                     for i in range(len(min_y)):
-                        ax.add_patch(Rectangle((min_x[i], min_y[i]), 1, 1, fill=False, edgecolor='pink', lw=3))
+                        ax.add_patch(Rectangle((min_x[i], min_y[i]), 1, 1, fill=False, edgecolor='limegreen', lw=3))
                     ax = sns.heatmap(heatmap_values,
                                      cbar=False,
                                      annot=True,

@@ -50,6 +50,8 @@ class Learning_rate:
             learning_rates.append(self.function(step))
 
         plt.plot(learning_rates)
+        plt.xlabel("Steps")
+        plt.ylabel("$\\gamma$")
         plt.title(self.name)
         plt.savefig(f"../plots/{filename}.png")
 

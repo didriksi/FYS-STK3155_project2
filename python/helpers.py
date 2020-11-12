@@ -19,7 +19,7 @@ def filter_dicts(dicts):
     filtered_dicts:
                 list of dictionaries
                 Dictionaries with only the unique key/value combinations in them
-    common:     dictionarie
+    common:     dictionaries
                 The key/value combinations that were shared between all the input dictionaries
     """
 
@@ -46,6 +46,16 @@ def filter_dicts(dicts):
     return dicts, common
 
 def listify_dict_values(dicts):
+    """Makes a dict with all the keys from all the dicts, where the values is a list of all the values.
+    
+    Parameters:
+    -----------
+    dicts:      list of dicts
+
+    Returns:
+    --------
+    key_values: dict
+    """
     key_values = {}
     for dictionary in dicts:
         for key, value in dictionary.items():
@@ -127,6 +137,13 @@ def make_models(model_class, common_kwargs, subplot_uniques, subplot_copies, sub
     return models
 
 def classification_accuracy(subplots, data):
+    """Makes a confusion table, and prints out accuracy and other relevant metrics for classification problems.
+
+    subplots:  (models, sgd kwargs)
+                Each tuples first element is a list of models to be tested together.
+    data:       dict
+                Big dictionary with training, testing and validation data.
+    """
     best_models = []
 
     all_models = [models for models, _ in subplots]
