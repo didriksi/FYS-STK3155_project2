@@ -137,7 +137,7 @@ class Tune:
 
                     min_y, min_x = np.nonzero(heatmap_values == np.amin(heatmap_values))
                     for i in range(len(min_y)):
-                        ax.add_patch(Rectangle((min_x[i], min_y[i]), 1, 1, fill=False, edgecolor='pink', lw=3))
+                        ax.add_patch(Rectangle((min_x[i], min_y[i]), 1, 1, fill=False, edgecolor='limegreen', lw=3))
                     ax = sns.heatmap(heatmap_values,
                                      cbar=False,
                                      annot=True,
