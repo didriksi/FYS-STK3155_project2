@@ -235,27 +235,20 @@ def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_
 
     neural =   {'layers': [{'height': 64},
                            {'height': 32},
-                           {'height': 10, 'activations': activations.sigmoid, 'd_func': lambda a, y, _: y - a}],
+                           {'height': 10, 'activations': activations.sigmoids, 'd_func': lambda a, y, _: y - a}],
                 'learning_rate': learning_rates[0],
                 'momentum': 0.6}
 
     logistic = {'name': 'Logistic',
                 'layers': [{'height': 64},
-                           {'height': 10, 'activations': activations.softmax, 'd_func': lambda a, y, _: y - a}],
+                           {'height': 10, 'activations': activations.softmaxs, 'd_func': lambda a, y, _: y - a}],
                 'learning_rate': learning_rates[1],
                 'momentum': 0.6}
 
-    unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
+    neural_model_ = neural_model.Network(**neural)
+    logistic_model = neural_model.Network(**logistic)
 
-    neural_models = helpers.make_models(
-        neural_model.Network,
-        common_kwargs,
-        subplot_uniques,
-        len(unique_sgd_kwargs),
-        subsubplot_uniques
-        )
-
-    subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(neural_models, unique_sgd_kwargs*len(neural_models))]
+    subplots = [([neural_model_, logistic_model], {'mini_batch_size': mini_batch_size})]
 
     sgd_on_models_kwargs = {
         'epochs': epochs,
