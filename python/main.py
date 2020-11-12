@@ -289,7 +289,7 @@ def mnist_softmax_sigmoid(data, epochs=10000, epochs_without_progress=2000, mini
 def tune_neural_reg(data, epochs=10000, epochs_without_progress=500, mini_batch_size=20):
     """Makes a heatmap of performance of different neural models on regrression on real terrain"""
     total_steps =  epochs * len(data['x_train'])//mini_batch_size
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(1e-3, 1/2500), (1e-2, 1/2000), (3e-2, 1/2000)]]
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(1e-3, 1/25000), (1e-2, 1/20000), (3e-2, 1/20000)]]
 
     common_kwargs = {'momentum': 0.6}
     subsubplot_uniques = [{'learning_rate': learning_rate_func} for learning_rate_func in learning_rates]
@@ -361,7 +361,7 @@ if __name__ == '__main__':
         'neural_reg_tune': (tune_neural_reg, terrainData),
         'reg': (neural_regression, terrainData),
         'mnist': (mnist_classification, mnistData),
-        'mnist_reg_tune': (tune_mnist_classification, mnistData)
+        'mnist_tune': (tune_mnist_classification, mnistData)
     }
 
     if 'all' in sys.argv:
