@@ -164,62 +164,53 @@ def momentum_plot(data):
 
 def neural_regression(data, epochs=5000, epochs_without_progress=500, mini_batch_size=20):
     """Plots performance of different neural models on regression problem for real terrain"""
+    polynomials = 8
+    X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
+    X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
+
     total_steps = epochs * len(data['x_train'])//mini_batch_size
     
-    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(1e-2, 1/2000), (3e-2, 1/2000)]]
+    learning_rates = [learning_rate.Learning_rate(base=base, decay=decay).ramp_up(10).compile(total_steps) for base, decay in [(3e-2, 1/2000), (1e-2, 1/2000)]]
 
-    common_kwargs = {'momentum': 0.6}
-    subplot_uniques = [{'layers': [{'height': 2}, {'height': hidden}, {'height': 1, 'activations': activations.linears}]} for hidden in [2, 4, 6, 8]]
-    subsubplot_uniques = [{'learning_rate': learning_rate_func} for learning_rate_func in learning_rates]
+    sigmoid = {'name': 'Sigmoid',
+                'layers': [{'height': 2},
+                           {'height': 2},
+                           {'height': 1, 'activations': activations.linears}],
+                'learning_rate': learning_rates[0],
+                'momentum': 0.6}
+    leaky   = {'name': 'Leaky ReLu',
+                'layers': [{'height': 2},
+                           {'height': 6, 'activations': activations.leaky_relus},
+                           {'height': 6, 'activations': activations.leaky_relus},
+                           {'height': 1, 'activations': activations.linears}],
+                'learning_rate': learning_rates[0],
+                'momentum': 0.6}
+    relu    = {'name': 'ReLu',
+                'layers': [{'height': 2},
+                           {'height': 6, 'activations': activations.relus},
+                           {'height': 6, 'activations': activations.relus},
+                           {'height': 1, 'activations': activations.linears}],
+                'learning_rate': learning_rates[1],
+                'momentum': 0.6}
 
-    #TODO: Complete with best models from tune
-    sigmoid_uniques = [{'layers': [{'height': 2}, {'height': hidden}, {'height': 1, 'activations': activations.linears}],
-                        'learning_rate': learning_rate_func,} for learning_rate_func in learning_rates] 
-    unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
+    neural_models = []
+    for model in [sigmoid, leaky, relu]:
+        neural_models.append(neural_model.Network(**model))
 
-    neural_models = helpers.make_models(
-        neural_model.Network,
-        common_kwargs,
-        subplot_uniques,
-        len(unique_sgd_kwargs),
-        subsubplot_uniques
-        )
+    ridge_model = [linear_models.RegularisedLinearRegression(
+        name = 'Ridge',
+        beta_func = linear_models.beta_ridge,
+        momentum = 0.6,
+        _lambda = 0.001,
+        x_shape = X_train.shape[1],
+        learning_rate = 0.01
+        ), X_train, X_validate, data['y_train'], data['y_validate']]
 
-    subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(neural_models, unique_sgd_kwargs*len(neural_models))]
-
-    errors, subtitle, subplots, metrics_string = sgd.sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=epochs, epochs_without_progress=epochs_without_progress)
-
-    title = ['Neural model, regression on terrain data', 'neural_regression', subtitle]
-
-    sgd.plot_sgd_errors(errors, title, metrics_string)
-
-def neural_regression_2(data, mini_batch_size=20, epochs=6000, epochs_without_progress=300):
-    total_steps = epochs * len(data['x_train'])//mini_batch_size
-
-    common_kwargs = {'momentum': 0.6}
-    subplot_uniques = [{}]
-    subsubplot_uniques = [{'name': name, 'learning_rate': learning_rate, 'layers':
-                      [{'height': 2}, {'height': 2, 'activations': _activations}, {'height': 1}]}
-                        for name, _activations, learning_rate
-                        in [('Neural: Sigmoid', activations.sigmoids, learning_rate.Learning_rate(base=5e-3, decay=1/2500).compile(total_steps)),
-                            ('Neural: ReLu', activations.relus, learning_rate.Learning_rate(base=1e-4, decay=1/4000).compile(total_steps)),
-                            ('Neural: Leaky ReLu', activations.leaky_relus, learning_rate.Learning_rate(base=1e-4, decay=1/4000).compile(total_steps))]]
-
-    unique_sgd_kwargs = [{'mini_batch_size': mini_batch_size}]
-
-    neural_models = helpers.make_models(
-        neural_model.Network,
-        common_kwargs,
-        subplot_uniques,
-        len(unique_sgd_kwargs),
-        subsubplot_uniques
-        )
-
-    subplots = [(models, sgd_kwargs) for models, sgd_kwargs in zip(neural_models, unique_sgd_kwargs*len(neural_models))]
+    subplots = [([*neural_models, ridge_model], {'mini_batch_size': mini_batch_size})]
 
     errors, subtitle, subplots, metrics_string = sgd.sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=epochs, epochs_without_progress=epochs_without_progress)
 
-    title = ['Neural model, regression on terrain data', 'neural_regression_2', subtitle]
+    title = ['Best models of each type, regression', 'regression_vs', subtitle]
 
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
@@ -295,37 +286,6 @@ def mnist_softmax_sigmoid(data, epochs=10000, epochs_without_progress=2000, mini
 
     sgd.plot_sgd_errors(errors, title, metric_string)
 
-def regression_compare(data, epochs=10000, epochs_without_progress=300, mini_batch_size=20):
-    """Plots comparison of the best neural and linear models for regression on real terrain"""
-    polynomials = 8
-    X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
-    X_validate = linear_models.poly_design_matrix(polynomials, data['x_validate'])
-    
-    total_steps = epochs * len(data['x_train'])//mini_batch_size
-
-    neural = neural_model.Network(
-        momentum=0.6,
-        layers=[{'height': 2}, {'height': 2}, {'height': 1, 'activations': activations.linears}],
-        learning_rate=learning_rate.Learning_rate(base=5e-3, decay=1/2500).ramp_up(10).compile(total_steps)
-        )
-
-    ridge = [linear_models.RegularisedLinearRegression(
-        name='Ridge',
-        beta_func=linear_models.beta_ridge,
-        momentum=0.6,
-        _lambda=0.001,
-        x_shape=X_train.shape[1],
-        learning_rate=0.01
-        ), X_train, X_validate, data['y_train'], data['y_validate']]
-
-    subplots = [([neural, ridge], {'mini_batch_size': mini_batch_size})]
-
-    errors, subtitle, subplots, metrics_string = sgd.sgd_on_models(data['x_train'], data['x_validate'], data['y_train'], data['y_validate'], *subplots, epochs=epochs, epochs_without_progress=epochs_without_progress)
-
-    title = ['Neural vs Ridge model, regression on terrain data', 'regression_vs', subtitle]
-
-    sgd.plot_sgd_errors(errors, title, metrics_string)
-
 def tune_neural_reg(data, epochs=10000, epochs_without_progress=500, mini_batch_size=20):
     """Makes a heatmap of performance of different neural models on regrression on real terrain"""
     total_steps =  epochs * len(data['x_train'])//mini_batch_size
@@ -338,7 +298,7 @@ def tune_neural_reg(data, epochs=10000, epochs_without_progress=500, mini_batch_
 
     activation_names = ['ReLu', 'Leaky ReLu', 'Sigmoid']
     _activations = [activations.relus, activations.leaky_relus, activations.sigmoids]
-    for _activations, activation_name in zip(activations, activation_names):
+    for _activations, activation_name in zip(_activations, activation_names):
         heights = [2, 4, 6, 8]
         hiddens_1 = [[{'height': hidden, 'activations': _activations}] for hidden in heights]
         hiddens_2 = [[{'height': hidden, 'activations': _activations},
@@ -399,7 +359,6 @@ if __name__ == '__main__':
         'beta_variance': (beta_variance, terrainData),
         'neural_reg_tune': (tune_neural_reg, terrainData),
         'neural_reg': (neural_regression, terrainData),
-        'compare_reg': (regression_compare, terrainData),
         'mnist': (mnist_classification, mnistData),
         'mnist_tune': (tune_mnist_classification, mnistData)
     }
