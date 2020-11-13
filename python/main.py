@@ -9,6 +9,7 @@ import helpers
 import sgd
 import metrics
 import activations
+import plotting
 
 def conf_interval_plot(data, epochs=300):
     """Plots confidence intervals for different linear models on regression problem for real terrain"""
@@ -217,13 +218,28 @@ def neural_regression(data, epochs=5000, epochs_without_progress=500, mini_batch
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
     print("Model performances on test data")
+    neural_subplots = []
     for model in neural_models:
         y_pred = model.predict(data['x_test'])
         mse = metrics.MSE(data['y_test'], y_pred)
-        print(f"{model.name}: {mse}")
-    ridge_model[0].predict(X_test)
-    mse = metrics.MSE(data['y_test'], y_pred)
-    print(f"{ridge_model[0].name}: {mse}")
+        r2 = metrics.R_2(data['y_test'], y_pred)
+        neural_subplots.append((model.name, data['x_test'], y_pred[:,0]))
+        print(f"{model.name}: {mse} {r2}")
+
+    X_test = linear_models.poly_design_matrix(polynomials, data['x_test'])
+    ridge_pred = ridge_model[0].predict(X_test)
+    mse = metrics.MSE(data['y_test'], ridge_pred)
+    r2 = metrics.R_2(data['y_test'], ridge_pred)
+    print(f"{ridge_model[0].name}: {mse} {r2}")
+
+    plotting.side_by_side(
+        *neural_subplots,
+        ['Ridge', data['x_test'], ridge_pred[:,0]],
+        ['Ground truth', data['x_test'], data['y_test'][:,0]],
+        title=["Terrain predictions", "terrain_pred"],
+        projection='3d',
+        plotter=plotting.trisurface_plotter,
+        view_angles=[15, 270])
 
 def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_batch_size=40):
     """Plots and writes out performance of neural and logistic models on classification problem for the MNIST dataset"""
@@ -264,7 +280,7 @@ def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_
 
     classification_subplots = [(subplots[0][0], subplots[1]), (subplots[0][1], subplots[1])]
 
-    helpers.classification_accuracy(classification_subplots, data)
+    metrics.classification_accuracy(classification_subplots, data)
 
 def mnist_softmax_sigmoid(data, epochs=5000, epochs_without_progress=2000, mini_batch_size=40):
     """Compares softmax and sigmoid as activation of final layer on classification problem for the MNIST dataset

@@ -60,7 +60,7 @@ def scatter_plotter(ax, x, y, *args, **kwargs):
     ax.scatter(x, y, *args, **kwargs)
 
 def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), title="plot", projection=None, **kwargs):
-    """Plots two plots with the same x side by side. Can also make an animation of them from different angles.
+    """Plots several plots with the same x side by side. Can also make an animation of them from different angles.
     
     Parameters:
     -----------
@@ -85,7 +85,7 @@ def side_by_side(*plots, plotter=simple_plotter, axis_labels=('x', 'y', 'z'), ti
         subplot_shape = (1, len(plots))
     elif len(plots) <= 8:
         fig = plt.figure(figsize=(4+len(plots)*4, 15))
-        subplot_shape = (2, int(len(plots)/2))
+        subplot_shape = (2, int(np.ceil(len(plots)/2)))
     elif len(plots) == 9:
         fig = plt.figure(figsize=(18, 15))
         subplot_shape = (3, int(len(plots)/3))
