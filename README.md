@@ -20,6 +20,7 @@ The project report is in the root folder, with the plots in the /plots folder, a
 - plotting.py has a bloated function called side_by_side, that takes in a complicated datastructure of nested lists and dictionaries to plot out virtually anything using one of the plotter functions also found in the module. The module also has a function to plot the architecture of a neural network
 - real_terrain.py imports terrain data, and uses data_handling.make_data_dict to split it
 - sgd.py has a stochastic gradient descent function, as well as a series of functions to make it easier to perform SGD on more than one model at a time, and then plot them by interfacing with plotting.side_by_side
+- test_best_models_mnist.py manual testing of the best two models from the mnist tuning. Moving outside the main.py allows for a faster run of the code.
 - tune.py also uses sgd.sgd to perform SGD on a set of models, but is useful for comparing more models when it is desirable to see the correlation between two parameters and error, because it makes heatmaps
 
 ## The main module
