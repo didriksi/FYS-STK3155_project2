@@ -163,7 +163,7 @@ def momentum_plot(data):
 
     sgd.plot_sgd_errors(errors, title, metrics_string)
 
-def neural_regression(data, epochs=5000, epochs_without_progress=500, mini_batch_size=20):
+def terrain_reggression(data, epochs=5000, epochs_without_progress=500, mini_batch_size=20):
     """Plots performance of different neural models on regression problem for real terrain"""
     polynomials = 8
     X_train = linear_models.poly_design_matrix(polynomials, data['x_train'])
@@ -236,10 +236,10 @@ def neural_regression(data, epochs=5000, epochs_without_progress=500, mini_batch
         *neural_subplots,
         ['Ridge', data['x_test'], ridge_pred[:,0]],
         ['Ground truth', data['x_test'], data['y_test'][:,0]],
-        title=["Terrain predictions", "terrain_pred"],
-        projection='3d',
-        plotter=plotting.trisurface_plotter,
-        view_angles=[15, 270])
+        title = ["Terrain predictions", "terrain_pred"],
+        projection = '3d',
+        plotter = plotting.trisurface_plotter,
+        view_angles = [30, 230])
 
 def mnist_classification(data, epochs=10000, epochs_without_progress=2000, mini_batch_size=40):
     """Plots and writes out performance of neural and logistic models on classification problem for the MNIST dataset"""
@@ -403,11 +403,11 @@ if __name__ == '__main__':
     mnist_data = mnist.get_data(0.6, 0.2)
     
     functions = {
-        'conf': (conf_interval_plot, terrain_data),
+        'ols_reg': (conf_interval_plot, terrain_data),
         'momentum': (momentum_plot, terrain_data),
         'beta_variance': (beta_variance, terrain_data),
         'neural_reg_tune': (tune_neural_reg, terrain_data),
-        'reg': (neural_regression, terrain_data),
+        'reg': (terrain_reggression, terrain_data),
         'mnist': (mnist_classification, mnist_data),
         'mnist_tune': (tune_mnist_classification, mnist_data),
         'softmax_issue': (mnist_softmax_sigmoid, mnist_data)
